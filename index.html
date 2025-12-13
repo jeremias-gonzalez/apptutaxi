@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taxi Express - Splash Screen</title>
+    <title>TuTaxi</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -123,7 +123,7 @@
         </div>
 
         <div id="splash-loader-container" style="display: none;">
-            <div class="splash-text">Conectando con unidades...</div>
+            <div class="splash-text">10% de descuento en todos tus viajes!</div>
         </div>
 
     </div>
@@ -133,7 +133,7 @@
     </div>
 
     <div id="panel-inputs" class="panel-inputs">
-        <h2>Viajá con seguridad, paga menos.</h2>
+        <h2>Viajá con seguridad,elegi tutaxi.</h2>
         
         <div class="input-group">
             <i class="fas fa-car input-icon"></i>
@@ -152,7 +152,7 @@
         </div>
 
         <button class="btn-accion btn-calcular" onclick="procesarCalculo()">
-            ✅ CALCULAR PRECIO AHORA
+            CALCULAR PRECIO AHORA
         </button>
         
         <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;">
@@ -182,12 +182,54 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
-    <script>
+  <script>
         const RIO_CUARTO_LAT = -33.1232;
         const RIO_CUARTO_LON = -64.3493;
         const SC_LAT = -33.205; 
         const SC_LON = -64.440;
         const RIO_BBOX = "-64.55,-33.25,-64.20,-33.05"; 
+
+        // ==========================================
+        // 1. TU BASE DE DATOS LOCAL (JSON VIP)
+        // Agrega aquí todos los lugares que quieras que aparezcan sí o sí.
+        // ==========================================
+        const LUGARES_VIP = [
+            { 
+                nombre: "Sociedad Rural Río Cuarto", 
+                direccion: "Av. Amadeo Sabattini 3801", 
+                // Coordenada ajustada al predio sobre Ruta 8
+                lat: -33.16089, lon: -64.35898, 
+                alias: ["rural", "feria", "expo", "campo"] 
+            },
+            { 
+                nombre: "Terminal de Ómnibus", 
+                direccion: "Andres Dadone 850", 
+                // Coordenada exacta de la terminal (estaba muy al sur)
+                lat: -33.1142, lon: -64.3516, 
+                alias: ["terminal", "micro", "colectivo", "bus"] 
+            },
+            // { 
+            //     nombre: "Paseo de la Ribera Shopping", 
+            //     direccion: "Sobremonte 80", 
+            //     // Ajustado al edificio del Shopping
+            //     lat: -33.1176, lon: -64.3471, 
+            //     alias: ["shopping", "cine", "paseo", "patio", "comidas"] 
+            // },
+            { 
+                nombre: "Centro Cívico", 
+                direccion: "Bv. Arturo Illia 1256", 
+                // Ajustado al predio del Centro Cívico cerca del río
+                lat: -33.122231, lon: -64.334779, 
+                alias: ["civico", "centro", "centro civico","CIVICO","CENTRO","CENTRO"] 
+            },
+            { 
+                nombre: "Hospital San Antonio de Padua", 
+                direccion: "Guardias Nacionales 1027", 
+                // Ajustado a la entrada principal
+                lat: -33.109414, lon: -64.355544, 
+                alias: ["hospital", "medico", "guardia", "padua"] 
+            }
+        ];
 
         var map = L.map('map', { zoomControl: false }).setView([RIO_CUARTO_LAT, RIO_CUARTO_LON], 14);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(map);
@@ -198,7 +240,6 @@
         var activeInputId = null;
         var gpsMarker = null; 
 
-        // --- CONFIGURACIÓN DE RUTA ---
         var controlRutas = L.Routing.control({
             waypoints: [], routeWhileDragging: false, addWaypoints: false, show: false,
             lineOptions: { styles: [ { className: 'route-line-animated' } ] },
@@ -235,9 +276,6 @@
             controlRutas.setWaypoints([coordOrigen, coordDestino]);
         }
 
-        // ============================================
-        //  AUTOCOMPLETADO
-        // ============================================
         function inicializarInputs() {
             const inputOrigen = document.getElementById('input-origen');
             const inputDestino = document.getElementById('input-destino');
@@ -256,9 +294,12 @@
                 const query = this.value;
                 const lista = document.getElementById('lista-compartida');
                 if (query.length < 2) { lista.style.display = 'none'; return; }
+                
                 clearTimeout(timeout);
-                mostrarSkeleton(lista);
-                timeout = setTimeout(() => { buscarSugerencias(query); }, 300);
+                mostrarSkeleton(lista); // Mostrar carga
+                
+                // Esperar un poco y buscar
+                timeout = setTimeout(() => { buscarSugerenciasHibridas(query); }, 300);
             });
         }
 
@@ -273,51 +314,113 @@
             }
         }
 
-        async function buscarSugerencias(query) {
+        // ============================================
+        //  2. BÚSQUEDA HÍBRIDA (JSON LOCAL + ARCGIS)
+        // ============================================
+        async function buscarSugerenciasHibridas(query) {
             const lista = document.getElementById('lista-compartida');
-            let busqueda = query.trim();
-            if(busqueda.toLowerCase() === "terminal") busqueda = "Terminal de Omnibus Rio Cuarto";
-            if(busqueda.toLowerCase() === "rural") busqueda = "Sociedad Rural Rio Cuarto";
-            if(busqueda.toLowerCase() === "centro") busqueda = "Plaza Roca Rio Cuarto";
+            lista.innerHTML = ''; // Limpiar lista
+            const queryLower = query.toLowerCase().trim();
 
-            const tieneContexto = busqueda.toLowerCase().match(/(rio cuarto|higueras|holmberg|catalina)/);
-            let textoParaApi = tieneContexto ? busqueda : `${busqueda}, Rio Cuarto, Cordoba`;
+            // --- A. BUSCAR EN TU JSON LOCAL PRIMERO ---
+            const resultadosLocales = LUGARES_VIP.filter(lugar => 
+                lugar.nombre.toLowerCase().includes(queryLower) || 
+                lugar.alias.some(alias => alias.includes(queryLower))
+            );
 
-            const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/suggest?f=json&text=${encodeURIComponent(textoParaApi)}&searchExtent=${RIO_BBOX}&category=Address,POI,Point Interest&maxSuggestions=15&countryCode=ARG`;
+            // Renderizar resultados locales (Con ícono de estrella ⭐)
+            resultadosLocales.forEach(lugar => {
+                const li = document.createElement('li');
+                li.style.background = "#2d2d2d"; // Fondo sutilmente distinto para destacar
+                li.innerHTML = `
+                    <div class="result-icon" style="color: gold;"><i class="fas fa-star"></i></div>
+                    <div class="result-text">
+                        <span class="result-title">${lugar.nombre}</span>
+                        <span class="result-sub">${lugar.direccion}</span>
+                    </div>
+                `;
+                li.onclick = () => {
+                    usarCoordenadaDirecta(lugar.nombre, lugar.lat, lugar.lon);
+                };
+                lista.appendChild(li);
+            });
+
+            // --- B. BUSCAR EN ARCGIS (NUBE) ---
+            // Inyectamos contexto si no es un lugar local
+            let textoParaApi = queryLower.match(/(rio cuarto|higueras|holmberg|catalina)/) ? query : `${query}, Rio Cuarto, Cordoba`;
+            
+            const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/suggest?f=json&text=${encodeURIComponent(textoParaApi)}&searchExtent=${RIO_BBOX}&category=Address,POI&maxSuggestions=10&countryCode=ARG`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                lista.innerHTML = ''; 
                 
                 if (data.suggestions && data.suggestions.length > 0) {
                     const vistos = new Set();
                     data.suggestions.forEach(item => {
-                        let textoCompleto = item.text;
-                        textoCompleto = textoCompleto.replace(", Córdoba, ARG", "").replace(", ARG", "");
-                        if (textoCompleto.includes("Las Vertientes")) textoCompleto = textoCompleto.replace("Las Vertientes", "Santa Catalina");
-                        if (textoCompleto.includes("Holmberg")) textoCompleto = textoCompleto.replace("Holmberg", "Santa Catalina");
+                        let texto = item.text;
+                        // Limpieza visual
+                        texto = texto.replace(", Córdoba, ARG", "").replace(", ARG", "");
+                        if (texto.includes("Las Vertientes")) texto = texto.replace("Las Vertientes", "Santa Catalina");
+                        if (texto.includes("Holmberg")) texto = texto.replace("Holmberg", "Santa Catalina");
 
-                        const esZona = textoCompleto.toLowerCase().match(/(rio cuarto|río cuarto|higueras|catalina|holmberg|vertientes)/);
-                        if (!esZona) return; 
+                        // Filtro de Zona
+                        if (!texto.toLowerCase().match(/(rio cuarto|río cuarto|higueras|catalina|holmberg|vertientes)/)) return;
+                        
+                        // Evitar duplicados con los locales (si ya salió "Rural" del JSON, no mostrar el de ArcGIS)
+                        if (resultadosLocales.some(loc => texto.includes(loc.nombre))) return;
 
-                        if (vistos.has(textoCompleto)) return;
-                        vistos.add(textoCompleto);
-
-                        const partes = textoCompleto.split(',');
-                        const titulo = partes[0];
-                        const subtitulo = partes.length > 1 ? partes.slice(1).join(',').trim() : "Río Cuarto";
+                        if (vistos.has(texto)) return;
+                        vistos.add(texto);
 
                         const li = document.createElement('li');
+                        const partes = texto.split(',');
+                        const titulo = partes[0];
+                        const subtitulo = partes.length > 1 ? partes.slice(1).join(',').trim() : "Río Cuarto";
+                        
                         let iconoClass = item.isCollection ? 'fa-store' : 'fa-map-pin';
-                        li.innerHTML = `<div class="result-icon"><i class="fas ${iconoClass}"></i></div><div class="result-text"><span class="result-title">${titulo}</span><span class="result-sub">${subtitulo}</span></div>`;
-                        li.onclick = () => { resolverUbicacion(item.magicKey, textoCompleto); };
+
+                        li.innerHTML = `
+                            <div class="result-icon"><i class="fas ${iconoClass}"></i></div>
+                            <div class="result-text">
+                                <span class="result-title">${titulo}</span>
+                                <span class="result-sub">${subtitulo}</span>
+                            </div>
+                        `;
+                        li.onclick = () => { resolverUbicacion(item.magicKey, texto); };
                         lista.appendChild(li);
                     });
-                } else { lista.style.display = 'none'; }
-            } catch(e) { console.error(e); lista.style.display = 'none'; }
+                }
+                
+                // Si no hay nada ni local ni remoto
+                if (resultadosLocales.length === 0 && (!data.suggestions || data.suggestions.length === 0)) {
+                    lista.style.display = 'none';
+                } else {
+                    lista.style.display = 'block';
+                }
+
+            } catch(e) { console.error(e); }
         }
 
+        // Función para usar coordenadas directas del JSON (Sin llamar a API)
+        function usarCoordenadaDirecta(nombre, lat, lon) {
+            const inputActivo = document.getElementById(activeInputId);
+            inputActivo.value = nombre;
+            document.getElementById('lista-compartida').style.display = 'none';
+            
+            const latlng = L.latLng(lat, lon);
+            
+            if (activeInputId === 'input-origen') {
+                coordOrigen = latlng;
+            } else {
+                coordDestino = latlng;
+                const datosAGuardar = { direccion: nombre, lat: lat, lng: lon };
+                localStorage.setItem('ultimoDestinoTaxi', JSON.stringify(datosAGuardar));
+                cargarHistorial();
+            }
+        }
+
+        // Función para resolver coordenadas de ArcGIS
         async function resolverUbicacion(magicKey, textoMostrado) {
             const inputActivo = document.getElementById(activeInputId);
             inputActivo.value = textoMostrado; 
@@ -342,7 +445,7 @@
         }
 
         // ============================================
-        //  GPS
+        //  GPS (Sin cambios)
         // ============================================
         function obtenerUbicacionActual() {
             const inputOrigen = document.getElementById('input-origen');
@@ -385,36 +488,23 @@
             }
         }
 
-        // Utils
         function calcularDistanciaKm(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c; }
         function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function() { document.getElementById('input-destino').value = datos.direccion; coordDestino = L.latLng(datos.lat, datos.lng); } } }
         function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHours(); let esNoche = (hora >= 21 || hora < 7); let bajada = esNoche ? 1900 : 1750; let ficha = esNoche ? 950 : 880; let textoTarifa = esNoche ? "🌜 Noche" : "🌞 Día"; document.getElementById('badge-tarifa').innerText = textoTarifa; let km = distanciaCalculada; let calculoBruto = bajada + (km * ficha); let resultadoFinal = calculoBruto - (calculoBruto * 0.10); document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km'; }
         function volverAlFormulario() { document.getElementById('panel-resultados').classList.remove('visible'); document.getElementById('panel-inputs').classList.remove('hidden'); if(gpsMarker && !map.hasLayer(gpsMarker)) gpsMarker.addTo(map); controlRutas.setWaypoints([]); }
         function pedirPorWhatsapp() { let origen = document.getElementById('input-origen').value; let destino = document.getElementById('input-destino').value; let precio = document.getElementById('precio-final').innerText; let numero = "5493584199122"; let mensaje = `Hola! 🚖\nQuiero solicitar un taxi.\n\n📍 *Desde:* ${origen}\n🏁 *Hasta:* ${destino}\n💰 *Precio Est:* ${precio}`; window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank'); }
 
-        // --- LÓGICA DE INICIO CON SPLASH SCREEN ---
         window.addEventListener('load', () => {
-            // El splash screen ya está visible por CSS al inicio
-
-            // Paso 1: Esperar 2 segundos viendo el logo
             setTimeout(() => {
-                // Ocultar logo, mostrar loader (GIF)
                 document.getElementById('splash-logo-container').style.display = 'none';
                 document.getElementById('splash-loader-container').style.display = 'flex';
-                
-                // Paso 2: Esperar 3.5 segundos viendo la animación del taxi
                 setTimeout(() => {
-                    // Paso 3: Ocultar todo el splash suavemente
                     document.getElementById('splash-screen').classList.add('splash-hidden');
-                    
-                    // INICIAR LA APP REAL
                     obtenerUbicacionActual();
                     cargarHistorial();
                     inicializarInputs();
-                    
-                }, 3500); // Tiempo para ver el GIF
-
-            }, 2000); // Tiempo para ver el logo
+                }, 3500); 
+            }, 2000); 
         });
     </script>
 </body>
