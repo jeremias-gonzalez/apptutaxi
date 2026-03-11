@@ -1,0 +1,8 @@
+{
+  "name": "apptutaxi",
+  "version": "1.0.0",
+  "description": "App TuTaxi",
+  "scripts": {
+    "build": "echo \"const ENV = { MAPBOX_TOKEN: '${MAPBOX_TOKEN}' };\" > env.js"
+  }
+}
