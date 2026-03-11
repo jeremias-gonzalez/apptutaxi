@@ -243,7 +243,7 @@ async function calcularRutaDirecta(origen, destino) {
 
         // Use summary distance
         let kmReales = ruta.distance / 1000;
-        distanciaCalculada = kmReales * 1.10; // 10% Extra
+        distanciaCalculada = kmReales; // Exact distance
         calcularPrecio();
 
         document.getElementById('loader').style.display = 'none';
