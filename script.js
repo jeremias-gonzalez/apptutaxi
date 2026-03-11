@@ -3,7 +3,7 @@ const RIO_CUARTO_LON = -64.3493;
 const SC_LAT = -33.205;
 const SC_LON = -64.440;
 const RIO_BBOX = "-64.55,-33.25,-64.20,-33.05";
-const MAPBOX_TOKEN = env.MAPBOX_TOKEN;
+const MAPBOX_TOKEN = ENV.MAPBOX_TOKEN;
 
 let LUGARES_VIP = [];
 let TARIFAS_TAXI = { dia: { bajada: 1945, ficha: 950 }, noche: { bajada: 2110, ficha: 1050 } }; // Valores por defecto
