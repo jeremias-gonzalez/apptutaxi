@@ -8,7 +8,7 @@ if (!token) {
     console.warn("⚠️ ADVERTENCIA: MAPBOX_TOKEN no se encontró en las variables de entorno (process.env.MAPBOX_TOKEN está vacío).");
 }
 
-const content = `const env = { MAPBOX_TOKEN: "${token}" };\n`;
+const content = `const ENV = { MAPBOX_TOKEN: "${token}" };\n`;
 
 try {
     fs.writeFileSync('env.js', content, 'utf8');
