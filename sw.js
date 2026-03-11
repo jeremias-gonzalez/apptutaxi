@@ -34,11 +34,16 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-    // Para rutas dinámicas (como la de arcgis o osrm), prefiero primero la red y luego la caché (opcional).
+    // Para rutas dinámicas, prefiero primero la red y luego la caché (opcional).
     // Para lo estático, intentamos caché primero.
-    if (event.request.url.includes('geocode.arcgis.com') || event.request.url.includes('router.project-osrm.org')) {
+    if (event.request.url.includes('geocode.arcgis.com') || 
+        event.request.url.includes('router.project-osrm.org') || 
+        event.request.url.includes('api.mapbox.com')) {
         event.respondWith(
-            fetch(event.request).catch(() => caches.match(event.request))
+            fetch(event.request).catch(err => {
+                console.warn('Error en fetch dinámico:', err);
+                return caches.match(event.request);
+            })
         );
         return;
     }

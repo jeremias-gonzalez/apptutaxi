@@ -3,12 +3,67 @@ const RIO_CUARTO_LON = -64.3493;
 const SC_LAT = -33.205; 
 const SC_LON = -64.440;
 const RIO_BBOX = "-64.55,-33.25,-64.20,-33.05"; 
+const MAPBOX_TOKEN = ENV.MAPBOX_TOKEN;
 
 let LUGARES_VIP = [];
 let TARIFAS_TAXI = { dia: { bajada: 1750, ficha: 880 }, noche: { bajada: 1900, ficha: 950 } }; // Valores por defecto
 
-var map = L.map('map', { zoomControl: false }).setView([RIO_CUARTO_LAT, RIO_CUARTO_LON], 14);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(map);
+mapboxgl.accessToken = MAPBOX_TOKEN;
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/dark-v11',
+    center: [RIO_CUARTO_LON, RIO_CUARTO_LAT],
+    zoom: 14,
+    pitch: 60, // Añade el aspecto 3D
+    bearing: -17.6, // Gira ligeramente la ciudad
+    antialias: true // Anti-aliasing para los bordes de los edificios
+});
+
+map.on('style.load', () => {
+    // Insertar la capa de edificios en 3D debajo de las etiquetas
+    const layers = map.getStyle().layers;
+    let labelLayerId;
+    for (let i = 0; i < layers.length; i++) {
+        if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+            labelLayerId = layers[i].id;
+            break;
+        }
+    }
+
+    map.addLayer(
+        {
+            'id': 'add-3d-buildings',
+            'source': 'composite',
+            'source-layer': 'building',
+            'filter': ['==', 'extrude', 'true'],
+            'type': 'fill-extrusion',
+            'minzoom': 15,
+            'paint': {
+                'fill-extrusion-color': '#2a2a2a',
+                'fill-extrusion-height': [
+                    'interpolate',
+                    ['linear'],
+                    ['zoom'],
+                    15,
+                    0,
+                    15.05,
+                    ['get', 'height']
+                ],
+                'fill-extrusion-base': [
+                    'interpolate',
+                    ['linear'],
+                    ['zoom'],
+                    15,
+                    0,
+                    15.05,
+                    ['get', 'min_height']
+                ],
+                'fill-extrusion-opacity': 0.8
+            }
+        },
+        labelLayerId
+    );
+});
 
 var coordOrigen = null;
 var coordDestino = null;
@@ -53,52 +108,117 @@ function showToast(mensaje, tipo = 'normal') {
     }, 3000);
 }
 
-// --- RUTAS Y MAPA ---
-var controlRutas = L.Routing.control({
-    waypoints: [], 
-    routeWhileDragging: true, 
-    addWaypoints: false, 
-    show: false,
-    router: L.Routing.osrmv1({
-        serviceUrl: 'https://router.project-osrm.org/route/v1',
-        profile: 'driving',
-        routingOptions: { alternatives: true, steps: false }
-    }),
-    lineOptions: { styles: [ { className: 'route-line-animated' } ], extendToWaypoints: true, missingRouteTolerance: 0.1 },
-    altLineOptions: { styles: [ { className: 'leaflet-routing-alt-line' } ] },
-    createMarker: function(i, wp, nWps) {
-        if (i === 0) {
-             const startIcon = L.divIcon({ className: 'gps-dot-container', html: '<div class="gps-pulse"></div><div class="gps-dot"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
-            return L.marker(wp.latLng, { draggable: true, icon: startIcon });
+
+
+let polylineRuta = null;
+let markerA = null;
+let markerB = null;
+
+async function calcularRutaDirecta(origen, destino) {
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origen.lng},${origen.lat};${destino.lng},${destino.lat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+            throw new Error("No route found");
         }
-        else if (i === nWps - 1) {
-            return L.marker(wp.latLng, { draggable: true, icon: L.divIcon({ className: 'custom-div-icon', iconSize: [30, 30], iconAnchor: [5, 25], html: '<div class="map-icon-inner flag-icon-small"><i class="fas fa-flag-checkered"></i></div>' }) });
+        
+        const ruta = data.routes[0];
+        
+        // --- DRAW NEW ROUTE IN MAPBOX GL JS ---
+        const coordenadasGeoJSON = ruta.geometry.coordinates; // Mapbox expects [lng, lat]
+        
+        // Remove previous route if it exists
+        if (map.getSource('route')) {
+            map.getSource('route').setData({
+                'type': 'Feature',
+                'properties': {},
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': coordenadasGeoJSON
+                }
+            });
+        } else {
+            map.addSource('route', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': coordenadasGeoJSON
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'route',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#FFD700',
+                    'line-width': 6,
+                    'line-opacity': 0.9
+                }
+            });
+            polylineRuta = true; // Flag to know route exists
         }
-        return null;
+
+        // Add/Update Markers
+        if (markerA) markerA.remove();
+        if (markerB) markerB.remove();
+
+        const elStart = document.createElement('div');
+        elStart.className = 'gps-dot-container';
+        elStart.innerHTML = '<div class="gps-pulse"></div><div class="gps-dot"></div>';
+        
+        const elEnd = document.createElement('div');
+        elEnd.className = 'custom-div-icon';
+        elEnd.innerHTML = '<div class="map-icon-inner flag-icon-small" style="color: #FFD700;"><i class="fas fa-map-marker-alt" style="font-size: 30px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6));"></i></div>';
+        
+        markerA = new mapboxgl.Marker(elStart)
+            .setLngLat([origen.lng, origen.lat])
+            .addTo(map);
+            
+        markerB = new mapboxgl.Marker({ element: elEnd, offset: [0, -15] })
+            .setLngLat([destino.lng, destino.lat])
+            .addTo(map);
+
+        // Adjust map bounds
+        const bounds = new mapboxgl.LngLatBounds(
+            coordenadasGeoJSON[0],
+            coordenadasGeoJSON[0]
+        );
+        for (const coord of coordenadasGeoJSON) {
+            bounds.extend(coord);
+        }
+        
+        map.fitBounds(bounds, {
+            padding: {top: 50, bottom: 400, left: 50, right: 50},
+            pitch: 50
+        });
+        
+        // Use summary distance
+        let kmReales = ruta.distance / 1000;
+        distanciaCalculada = kmReales * 1.10; // 10% Extra
+        calcularPrecio();
+        
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('panel-inputs').classList.add('hidden');
+        document.getElementById('panel-resultados').classList.add('visible');
+        
+        if(gpsMarker && coordOrigen && coordOrigen.lng === gpsMarker.getLngLat().lng) { gpsMarker.remove(); }
+
+    } catch (error) {
+        console.error("Error calculando ruta:", error);
+        document.getElementById('loader').style.display = 'none';
+        showToast("No se pudo calcular la ruta. Intenta de nuevo.", "error");
     }
-}).addTo(map);
-
-controlRutas.on('routesfound', function(e) {
-    var bestRoute = e.routes[0];
-    actualizarDatosRuta(bestRoute);
-    if (!document.getElementById('panel-resultados').classList.contains('visible')) {
-         map.fitBounds(L.latLngBounds([coordOrigen, coordDestino]), { paddingTopLeft: [50, 50], paddingBottomRight: [50, 300] });
-         document.getElementById('loader').style.display = 'none';
-         document.getElementById('panel-inputs').classList.add('hidden');
-         document.getElementById('panel-resultados').classList.add('visible');
-    } else { document.getElementById('loader').style.display = 'none'; }
-    if(gpsMarker && coordOrigen.equals(gpsMarker.getLatLng())) { map.removeLayer(gpsMarker); }
-});
-
-controlRutas.on('routeselected', function(e) {
-    var selectedRoute = e.route;
-    actualizarDatosRuta(selectedRoute);
-});
-
-function actualizarDatosRuta(route) {
-    let kmReales = route.summary.totalDistance / 1000;
-    distanciaCalculada = kmReales * 1.10; // 10% Extra
-    calcularPrecio();
 }
 
 function intercambiarUbicaciones() {
@@ -124,17 +244,17 @@ function procesarCalculo() {
         document.getElementById('input-origen').style.borderColor = "#ff4444";
         document.getElementById('input-destino').style.borderColor = "#ff4444";
         setTimeout(() => {
-            document.getElementById('input-origen').style.borderColor = "#444";
-            document.getElementById('input-destino').style.borderColor = "#444";
+            document.getElementById('input-origen').style.borderColor = "var(--color-borde)";
+            document.getElementById('input-destino').style.borderColor = "var(--color-borde)";
         }, 500);
         return;
     }
     showToast("Calculando la mejor ruta...", "success");
     document.getElementById('loader').style.display = 'flex';
-    controlRutas.setWaypoints([coordOrigen, coordDestino]);
+    calcularRutaDirecta(coordOrigen, coordDestino);
 }
 
-// --- BUSCADOR HÍBRIDO OPTIMIZADO (ANTI-DUPLICADOS) ---
+// --- BUSCADOR HÍBRIDO OPTIMIZADO CON MAPBOX GEOCODING ---
 async function buscarSugerenciasHibridas(query) {
     const lista = document.getElementById('lista-compartida');
     lista.innerHTML = ''; 
@@ -164,64 +284,55 @@ async function buscarSugerenciasHibridas(query) {
         const keyCoord = lugar.lat.toFixed(3) + "," + lugar.lon.toFixed(3);
         coordenadasVistas.add(keyCoord);
         const li = document.createElement('li');
-        li.style.background = "#2d2d2d"; 
+        li.style.background = "rgba(40,40,40,0.8)"; 
         li.innerHTML = `<div class="result-icon" style="color: gold;"><i class="fas fa-star"></i></div><div class="result-text"><span class="result-title">${lugar.nombre}</span><span class="result-sub">${lugar.direccion}</span></div>`;
         li.onclick = () => { usarCoordenadaDirecta(lugar.nombre, lugar.lat, lugar.lon); };
         lista.appendChild(li);
     });
 
-    let textoConContexto = busquedaParaApi.toLowerCase().match(/(rio cuarto|higueras|holmberg|catalina)/) ? busquedaParaApi : `${busquedaParaApi}, Rio Cuarto, Cordoba`;
-
-    if (tieneNumero) {
-        const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(textoConContexto)}&searchExtent=${RIO_BBOX}&maxLocations=10&outFields=Match_addr,Place_Addr,Type&countryCode=ARG`;
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            if (data.candidates && data.candidates.length > 0) {
-                 data.candidates.forEach(candidate => {
-                    let titulo = candidate.address.split(',')[0];
-                    const keyCoord = candidate.location.y.toFixed(4) + "," + candidate.location.x.toFixed(4);
-                    if (coordenadasVistas.has(keyCoord) || nombresVistos.has(titulo.toLowerCase())) return;
-                    coordenadasVistas.add(keyCoord);
-                    nombresVistos.add(titulo.toLowerCase());
-                    const li = document.createElement('li');
-                    li.innerHTML = `<div class="result-icon"><i class="fas fa-map-marker-alt"></i></div><div class="result-text"><span class="result-title">${titulo}</span><span class="result-sub">Dirección exacta</span></div>`;
-                    li.onclick = () => { usarCoordenadaDirecta(titulo, candidate.location.y, candidate.location.x); };
-                    lista.appendChild(li);
-                });
-                if (lista.children.length > 0) lista.style.display = 'block';
-            }
-        } catch(e) { console.error(e); }
-    } else {
-        const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/suggest?f=json&text=${encodeURIComponent(textoConContexto)}&searchExtent=${RIO_BBOX}&category=Address,POI&maxSuggestions=10&countryCode=ARG`;
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            if (data.suggestions && data.suggestions.length > 0) {
-                const vistos = new Set();
-                data.suggestions.forEach(item => {
-                    let texto = item.text;
-                    texto = texto.replace(", Córdoba, ARG", "").replace(", ARG", "").replace(", Córdoba", "");
-                    let titulo = texto.split(',')[0];
-                    if (titulo.includes("Las Vertientes")) titulo = titulo.replace("Las Vertientes", "Santa Catalina");
-                    if (!texto.toLowerCase().match(/(rio cuarto|río cuarto|higueras|catalina|holmberg|vertientes)/)) return;
-                    const huellaDigital = titulo.toLowerCase().replace(/[^a-z0-9]/g, "");
-                    if (nombresVistos.has(huellaDigital)) return;
-                    nombresVistos.add(huellaDigital);
-                    if (vistos.has(texto)) return;
-                    vistos.add(texto);
-                    const partes = texto.split(',');
-                    const subtitulo = partes.length > 1 ? partes.slice(1).join(',').trim() : "Río Cuarto";
-                    const li = document.createElement('li');
-                    let iconoClass = item.isCollection ? 'fa-store' : 'fa-road';
-                    li.innerHTML = `<div class="result-icon"><i class="fas ${iconoClass}"></i></div><div class="result-text"><span class="result-title">${titulo}</span><span class="result-sub">${subtitulo}</span></div>`;
-                    li.onclick = () => { resolverUbicacion(item.magicKey, texto); };
-                    lista.appendChild(li);
-                });
-                if (lista.children.length > 0) lista.style.display = 'block';
-            }
-        } catch(e) { console.error(e); }
-    }
+    const urlMapbox = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(busquedaParaApi)}.json?bbox=${RIO_BBOX}&proximity=${RIO_CUARTO_LON},${RIO_CUARTO_LAT}&types=address,poi,neighborhood&language=es&access_token=${MAPBOX_TOKEN}`;
+    
+    try {
+        const response = await fetch(urlMapbox);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+            data.features.forEach(feature => {
+                // El nombre principal (ej. Centro, San Martin 123)
+                let titulo = feature.text;
+                if (feature.address) titulo += ' ' + feature.address;
+                
+                // Contexto (ej. Río Cuarto, Córdoba)
+                let ciudad = "Río Cuarto";
+                if (feature.context) {
+                    const ctxPlace = feature.context.find(c => c.id.startsWith('place'));
+                    if (ctxPlace) ciudad = ctxPlace.text;
+                }
+                
+                const subtitulo = ciudad;
+                
+                // Mapbox devuelve [lon, lat]
+                const lng = feature.geometry.coordinates[0];
+                const lat = feature.geometry.coordinates[1];
+                
+                const keyCoord = lat.toFixed(4) + "," + lng.toFixed(4);
+                const huellaDigital = titulo.toLowerCase().replace(/[^a-z0-9]/g, "");
+                
+                if (coordenadasVistas.has(keyCoord) || nombresVistos.has(huellaDigital)) return;
+                
+                coordenadasVistas.add(keyCoord);
+                nombresVistos.add(huellaDigital);
+                
+                const li = document.createElement('li');
+                let iconoClass = feature.place_type.includes('poi') ? 'fa-store' : 'fa-map-marker-alt';
+                
+                li.innerHTML = `<div class="result-icon"><i class="fas ${iconoClass}"></i></div><div class="result-text"><span class="result-title">${titulo}</span><span class="result-sub">${subtitulo}</span></div>`;
+                li.onclick = () => { usarCoordenadaDirecta(`${titulo}, ${subtitulo}`, lat, lng); };
+                lista.appendChild(li);
+            });
+            if (lista.children.length > 0) lista.style.display = 'block';
+        }
+    } catch(e) { console.error("Error Mapbox Geocoding:", e); }
 }
 
 function inicializarInputs() {
@@ -239,6 +350,10 @@ function configurarInput(inputElement) {
     inputElement.addEventListener('input', function() {
         const query = this.value;
         const lista = document.getElementById('lista-compartida');
+        
+        // Mover la lista dinámicamente debajo del input que se está usando
+        this.parentNode.appendChild(lista);
+
         if (query.length < 2) { lista.style.display = 'none'; return; }
         clearTimeout(timeout);
         mostrarSkeleton(lista);
@@ -261,25 +376,11 @@ function usarCoordenadaDirecta(nombre, lat, lon) {
     const inputActivo = document.getElementById(activeInputId);
     inputActivo.value = nombre;
     document.getElementById('lista-compartida').style.display = 'none';
-    const latlng = L.latLng(lat, lon);
+    const latlng = {lat: lat, lng: lon}; // Mapbox GL JS friendly
     if (activeInputId === 'input-origen') { coordOrigen = latlng; } else { coordDestino = latlng; const datosAGuardar = { direccion: nombre, lat: lat, lng: lon }; localStorage.setItem('ultimoDestinoTaxi', JSON.stringify(datosAGuardar)); cargarHistorial(); }
 }
 
-async function resolverUbicacion(magicKey, textoMostrado) {
-    const inputActivo = document.getElementById(activeInputId);
-    inputActivo.value = textoMostrado; 
-    document.getElementById('lista-compartida').style.display = 'none';
-    const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&magicKey=${magicKey}&singleLine=${encodeURIComponent(textoMostrado)}`;
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.candidates && data.candidates.length > 0) {
-            const cand = data.candidates[0];
-            const latlng = L.latLng(cand.location.y, cand.location.x);
-            if (activeInputId === 'input-origen') { coordOrigen = latlng; } else { coordDestino = latlng; const datosAGuardar = { direccion: textoMostrado, lat: cand.location.y, lng: cand.location.x }; localStorage.setItem('ultimoDestinoTaxi', JSON.stringify(datosAGuardar)); cargarHistorial(); }
-        }
-    } catch (e) { console.error(e); }
-}
+// Ya no usamos resolverUbicacion porque la API de Mapbox nos da las lat/lng directamente en la primera petición. (Se borra la función)
 
 function obtenerUbicacionActual() {
     const inputOrigen = document.getElementById('input-origen');
@@ -289,18 +390,31 @@ function obtenerUbicacionActual() {
         const onExito = async function(position) {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            coordOrigen = L.latLng(lat, lon);
-            map.setView([lat, lon], 16);
-            const gpsIcon = L.divIcon({ className: 'gps-dot-container', html: '<div class="gps-pulse"></div><div class="gps-dot"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
-            if(gpsMarker) map.removeLayer(gpsMarker);
-            gpsMarker = L.marker([lat, lon], { icon: gpsIcon }).addTo(map);
+            coordOrigen = {lat: lat, lng: lon}; // Mapbox GL JS friendly
+            map.flyTo({center: [lon, lat], zoom: 16, essential: true});
+            
+            const elStart = document.createElement('div');
+            elStart.className = 'gps-dot-container';
+            elStart.innerHTML = '<div class="gps-pulse"></div><div class="gps-dot"></div>';
+            
+            if(gpsMarker) gpsMarker.remove();
+            gpsMarker = new mapboxgl.Marker(elStart).setLngLat([lon, lat]).addTo(map);
             try {
-                const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&featureTypes=&location=${lon},${lat}`;
+                // Modificado para usar Mapbox Geocoding inverso
+                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?types=address,poi&language=es&access_token=${MAPBOX_TOKEN}`;
                 const resp = await fetch(url);
                 const data = await resp.json();
-                if(data && data.address) {
-                    let direccion = data.address.Address;
-                    let ciudad = data.address.City;
+                if(data.features && data.features.length > 0) {
+                    let feature = data.features[0];
+                    let direccion = feature.text;
+                    if(feature.address) direccion += ' ' + feature.address;
+                    
+                    let ciudad = "Río Cuarto";
+                    if (feature.context) {
+                        const ctxPlace = feature.context.find(c => c.id.startsWith('place'));
+                        if (ctxPlace) ciudad = ctxPlace.text;
+                    }
+                    
                     const distSC = calcularDistanciaKm(SC_LAT, SC_LON, lat, lon);
                     if(distSC < 5 && (ciudad === "Las Vertientes" || ciudad === "Holmberg")) ciudad = "Santa Catalina";
                     if(ciudad) direccion += `, ${ciudad}`;
@@ -319,9 +433,34 @@ function obtenerUbicacionActual() {
 }
 
 function calcularDistanciaKm(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c; }
-function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function() { document.getElementById('input-destino').value = datos.direccion; coordDestino = L.latLng(datos.lat, datos.lng); } } }
+function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function() { document.getElementById('input-destino').value = datos.direccion; coordDestino = {lat: datos.lat, lng: datos.lng}; } } }
 function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHours(); let esNoche = (hora >= 21 || hora < 7); let tarifaActual = esNoche ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia; let bajada = tarifaActual.bajada; let ficha = tarifaActual.ficha; let textoTarifa = esNoche ? "🌜 Noche" : "🌞 Día"; document.getElementById('badge-tarifa').innerText = textoTarifa; let km = distanciaCalculada; let calculoBruto = bajada + (km * ficha); let resultadoFinal = calculoBruto - (calculoBruto * 0.10); document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km'; }
-function volverAlFormulario() { document.getElementById('panel-resultados').classList.remove('visible'); document.getElementById('panel-inputs').classList.remove('hidden'); if(gpsMarker && !map.hasLayer(gpsMarker)) gpsMarker.addTo(map); controlRutas.setWaypoints([]); }
+function volverAlFormulario() {
+    document.getElementById('panel-resultados').classList.remove('visible');
+    document.getElementById('panel-inputs').classList.remove('hidden');
+    
+    // Add GPS Marker back if origin matches
+    if(gpsMarker && coordOrigen && gpsMarker.getLngLat().lng === coordOrigen.lng) { 
+        gpsMarker.addTo(map); 
+    }
+    
+    // Reset View
+    map.flyTo({center: [RIO_CUARTO_LON, RIO_CUARTO_LAT], zoom: 14, pitch: 60, essential: true});
+    
+    if (map.getSource('route')) {
+        map.getSource('route').setData({
+            'type': 'Feature',
+            'properties': {},
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': []
+            }
+        });
+    }
+    
+    if (markerA) { markerA.remove(); markerA = null; }
+    if (markerB) { markerB.remove(); markerB = null; }
+}
 function pedirPorWhatsapp() { let origen = document.getElementById('input-origen').value; let destino = document.getElementById('input-destino').value; let precio = document.getElementById('precio-final').innerText; let numero = "5493584199122"; let mensaje = `Hola! 🚖\nQuiero solicitar un taxi.\n\n📍 *Desde:* ${origen}\n🏁 *Hasta:* ${destino}\n💰 *Precio Est:* ${precio}`; window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank'); }
 
 function typeWriter() {

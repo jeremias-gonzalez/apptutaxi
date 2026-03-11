@@ -23,8 +23,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
 
     <link rel="stylesheet" href="index.css">
 </head>
@@ -82,12 +81,12 @@
     </div>
 
     <div id="panel-resultados" class="panel-resultados">
-        <div style="background: var(--color-principal); color: black; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <div style="padding: 10px; margin-bottom: 10px;">
             <div id="badge-tarifa" class="badge-tarifa">Cargando...</div>
-            <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">VIAJE ESTIMADO</div>
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #ccc;">VIAJE ESTIMADO</div>
             <div id="precio-original" class="precio-tachado">$0.00</div>
             <div id="precio-final" class="precio-grande">$0.00</div>
-            <div id="distancia-final" style="font-size: 0.8rem; font-weight: 700; margin-top: 5px;">0 km</div>
+            <div id="distancia-final" style="font-size: 0.9rem; font-weight: 600; margin-top: 5px; color: var(--color-principal);">0 km</div>
         </div>
 
         <button class="btn-accion btn-whatsapp" onclick="pedirPorWhatsapp()">
@@ -101,9 +100,10 @@
 
     <div id="toast-container"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
 
+    <!-- Variables de Entorno -->
+    <script src="env.js"></script>
     <script src="script.js"></script>
 
     <!-- Service Worker Registration -->
