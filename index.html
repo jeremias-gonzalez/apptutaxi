@@ -81,7 +81,10 @@
     </div>
 
     <div id="panel-resultados" class="panel-resultados">
-        <div style="padding: 10px; margin-bottom: 10px;">
+        <button id="btn-minimizar" class="btn-minimizar" onclick="togglePanelResultados()">
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        <div id="panel-resultados-content" style="transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; padding: 10px; margin-bottom: 10px;">
             <div id="badge-tarifa" class="badge-tarifa">Cargando...</div>
             <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #ccc;">VIAJE ESTIMADO</div>
             <div id="precio-original" class="precio-tachado">$0.00</div>
@@ -93,7 +96,7 @@
             <i class="fab fa-whatsapp" style="font-size: 1.3rem;"></i> PEDIR VIAJE
         </button>
 
-        <button class="btn-accion btn-volver" onclick="volverAlFormulario()">VOLVER</button>
+        <button id="btn-volver" class="btn-accion btn-volver" onclick="volverAlFormulario()">VOLVER</button>
     </div>
 
     <div id="map"></div>

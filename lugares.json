@@ -1,55 +1,65 @@
 [
-    { 
-        "nombre": "Sociedad Rural Río Cuarto", 
-        "direccion": "Av. Amadeo Sabattini 3801", 
-        "lat": -33.1405, 
-        "lon": -64.3120, 
-        "alias": ["rural", "feria", "expo", "campo"] 
+    {
+        "nombre": "Sociedad Rural Río Cuarto",
+        "direccion": "Av. Amadeo Sabattini 3801",
+        "lat": -33.1405,
+        "lon": -64.3120,
+        "alias": [
+            "rural",
+            "feria",
+            "expo",
+            "campo"
+        ]
     },
-    { 
-        "nombre": "Terminal de Ómnibus", 
-        "direccion": "Andres Dadone 850", 
-        "lat": -33.1142, 
-        "lon": -64.3516, 
-        "alias": ["terminal", "micro", "colectivo", "bus"] 
+    {
+        "nombre": "Terminal de Ómnibus",
+        "direccion": "Andres Dadone 850",
+        "lat": -33.1142,
+        "lon": -64.3516,
+        "alias": [
+            "terminal",
+            "micro",
+            "colectivo",
+            "bus"
+        ]
     },
-
-    { 
-        "nombre": "Centro Cívico", 
-        "direccion": "Bv. Arturo Illia 1256", 
-        "lat": -33.1165, 
-        "lon": -64.3520, 
-        "alias": ["civico", "gobierno", "rentas"] 
+    {
+        "nombre": "Centro Cívico",
+        "direccion": "Bv. Arturo Illia 1256",
+        "lat": -33.1165,
+        "lon": -64.3520,
+        "alias": [
+            "civico",
+            "gobierno",
+            "rentas"
+        ]
     },
-    { 
-        "nombre": "Hospital San Antonio de Padua", 
-        "direccion": "Guardias Nacionales 1027", 
-        "lat": -33.1125, 
-        "lon": -64.3575, 
-        "alias": ["hospital", "medico", "guardia", "padua"] 
+    {
+        "nombre": "Hospital San Antonio de Padua",
+        "direccion": "Guardias Nacionales 1027",
+        "lat": -33.1125,
+        "lon": -64.3575,
+        "alias": [
+            "hospital",
+            "medico",
+            "guardia",
+            "padua",
+            "clinica",
+            "sanatorio",
+            "salud"
+        ]
     },
-    { 
-        "nombre": "Av. Presidente Perón Centro (Puentes)", 
-        "direccion": "Zona Puentes - Costanera", 
-        "lat": -33.1225, "lon": -64.3550, 
-        "alias": ["peron centro", "peron puente", "costanera centro"] 
-    },
-    { 
-        "nombre": "Av. Presidente Perón Centro (Terminal)", 
-        "direccion": "Cerca de Terminal", 
-        "lat": -33.1180, "lon": -64.3490, 
-        "alias": ["peron terminal", "peron 2000", "peron centro"] 
-    },
-    { 
-        "nombre": "Av. Presidente Perón Este (Inicio)", 
-        "direccion": "Alturas 0 - 500 (Banda Norte)", 
-        "lat": -33.1150, "lon": -64.3420, 
-        "alias": ["peron este", "peron este 100", "peron este 200", "peron banda norte"] 
-    },
-    { 
-        "nombre": "Av. Presidente Perón Este (Final)", 
-        "direccion": "Alturas 600 - 1200 (Ruta)", 
-        "lat": -33.1120, "lon": -64.3300, 
-        "alias": ["peron este final", "peron este 800", "peron este 1000"] 
+    {
+        "nombre": "Universidad Nacional de Río Cuarto (UNRC)",
+        "direccion": "Ruta Nacional 36 km 601",
+        "lat": -33.1118,
+        "lon": -64.3005,
+        "alias": [
+            "universidad",
+            "unrc",
+            "facultad",
+            "instituto",
+            "campus"
+        ]
     }
 ]

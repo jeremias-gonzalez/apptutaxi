@@ -139,6 +139,16 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
 .btn-volver { background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 0.9rem; border: 1px solid var(--color-borde); backdrop-filter: blur(5px); }
 .btn-volver:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
 
+/* --- MARCADORES PRO --- */
+.uber-origen-container { width: 30px; height: 30px; position: relative; }
+.uber-origen { position: absolute; width: 14px; height: 14px; background-color: #000; border: 3px solid #fff; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 2; box-sizing: border-box; }
+.uber-origen-pulse { position: absolute; width: 30px; height: 30px; background-color: rgba(255,255,255,0.2); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; animation: uber-pulse 2s infinite ease-out; box-sizing: border-box; }
+@keyframes uber-pulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+
+.uber-destino-container { width: 20px; height: 20px; position: relative; }
+.uber-destino { position: absolute; width: 14px; height: 14px; background-color: #000; border: 3px solid #fff; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 5px rgba(0,0,0,0.5); box-sizing: border-box; } /* Square for destination */
+
+
 .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: var(--glass-blur); z-index: 5000; display: none; flex-direction: column; justify-content: center; align-items: center; }
 .spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 215, 0, 0.1); border-radius: 50%; border-top-color: var(--color-principal); animation: spin 1s infinite cubic-bezier(0.68, -0.55, 0.265, 1.55); filter: drop-shadow(0 0 10px rgba(255,215,0,0.5)); }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -151,6 +161,19 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
     display: flex; flex-direction: column; gap: 12px;
 }
 .panel-resultados.visible { transform: translateX(-50%) translateY(0); }
+.panel-resultados.minimized { transform: translateX(-50%) translateY(calc(100% - 75px)); }
+.panel-resultados.minimized #panel-resultados-content { max-height: 0; opacity: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+.panel-resultados.minimized #btn-volver { display: none; }
+.panel-resultados.minimized .btn-minimizar { transform: rotate(180deg); }
+
+.btn-minimizar {
+    position: absolute; top: -15px; left: 50%; margin-left: -20px;
+    width: 40px; height: 30px; background: var(--color-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--color-borde);
+    color: #fff; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;
+    transition: all 0.3s ease; box-shadow: 0 -4px 10px rgba(0,0,0,0.5); border-bottom: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+}
+.btn-minimizar:hover { color: var(--color-principal); background: rgba(30,30,30,0.9); }
+
 .precio-grande { font-size: 2.5rem; font-weight: 900; margin: 5px 0; line-height: 1; text-shadow: 0 2px 10px rgba(0,0,0,0.5); letter-spacing: -1px; }
 .precio-tachado { text-decoration: line-through; color: rgba(255,255,255,0.5); font-size: 1rem; font-weight: 600; margin-top: 5px; }
 .badge-tarifa { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 20px; display: inline-block; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 1px 2px rgba(255,255,255,0.1); }
