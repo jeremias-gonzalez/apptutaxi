@@ -277,14 +277,59 @@ function intercambiarUbicaciones() {
     }, 300);
 }
 
-function procesarCalculo() {
+async function procesarCalculo() {
     // 1. Gather all coordinate inputs
     const inputs = Array.from(document.querySelectorAll('.input-uber'));
     const coordenadasViaje = [];
     let valido = true;
 
-    inputs.forEach(input => {
-        const key = input.getAttribute('data-coord');
+    document.getElementById('loader').style.display = 'flex'; // show loader early for async
+
+    for (let i = 0; i < inputs.length; i++) {
+        const input = inputs[i];
+        let key = input.getAttribute('data-coord');
+        const query = input.value.trim();
+
+        // Si el usuario escribió pero NO seleccionó de la lista, forzamos la búsqueda al instante aquí mismo
+        if (!key && query.length >= 2) {
+            try {
+                let busquedaParaApi = query;
+                const tieneNumero = /\d/.test(query);
+                if (!tieneNumero) {
+                    if (query.toLowerCase().includes("peron oeste") || query.toLowerCase().includes("perón oeste")) { busquedaParaApi = query.replace(/peron oeste|perón oeste/i, "Avenida Presidente Perón Oeste"); }
+                    else if (query.toLowerCase().includes("peron este") || query.toLowerCase().includes("perón este")) { busquedaParaApi = query.replace(/peron este|perón este/i, "Avenida Presidente Perón Este"); }
+                }
+
+                // 1. Check local VIP first
+                const queryWords = query.toLowerCase().split(' ').filter(w => w.length > 0);
+                const localMatch = LUGARES_VIP.find(lugar => {
+                    const combinado = lugar.nombre.toLowerCase() + " " + (lugar.alias ? lugar.alias.join(" ") : "");
+                    return queryWords.every(w => combinado.includes(w));
+                });
+
+                if (localMatch) {
+                    key = `${localMatch.lat},${localMatch.lon}`;
+                    input.value = localMatch.nombre;
+                    input.setAttribute('data-coord', key);
+                } else {
+                    // 2. Mapbox Auto-Fetch Fallback
+                    const urlMapbox = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(busquedaParaApi)}.json?bbox=${RIO_BBOX}&proximity=${RIO_CUARTO_LON},${RIO_CUARTO_LAT}&types=address,poi,neighborhood&language=es&autocomplete=true&fuzzyMatch=true&access_token=${MAPBOX_TOKEN}`;
+                    const resp = await fetch(urlMapbox);
+                    const data = await resp.json();
+                    if (data.features && data.features.length > 0) {
+                        const feature = data.features[0];
+                        const lng = feature.geometry.coordinates[0];
+                        const lat = feature.geometry.coordinates[1];
+                        let titulo = feature.text;
+                        if (feature.address) titulo += ' ' + feature.address;
+                        key = `${lat},${lng}`;
+                        input.value = titulo;
+                        input.setAttribute('data-coord', key);
+                    }
+                }
+            } catch (error) { console.error("Auto-fetch fallback error:", error); }
+        }
+
         if (key) {
             const arr = key.split(',');
             coordenadasViaje.push({ lng: parseFloat(arr[1]), lat: parseFloat(arr[0]) });
@@ -293,15 +338,15 @@ function procesarCalculo() {
             valido = false;
             setTimeout(() => { input.style.borderColor = "var(--color-borde)"; }, 500);
         }
-    });
+    }
 
     if (!valido || coordenadasViaje.length < 2) {
-        showToast("Debes seleccionar direcciones válidas para todas las paradas", "error");
+        document.getElementById('loader').style.display = 'none';
+        showToast("Dirección no encontrada. Por favor asegúrate de elegirla de la lista", "error");
         return;
     }
 
     showToast("Calculando la mejor ruta...", "success");
-    document.getElementById('loader').style.display = 'flex';
     calcularRutaDirecta(coordenadasViaje);
 }
 
