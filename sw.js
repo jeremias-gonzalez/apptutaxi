@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tutaxi-v2'; // Changed version to bust cache
+const CACHE_NAME = 'tutaxi-v3'; // Changed version to bust cache
 const ASSETS = [
     './',
     './index.html',
@@ -6,7 +6,7 @@ const ASSETS = [
     './script.js',
     './lugares.json',
     './tarifas.json',
-    'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&display=swap',
+    'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css',

@@ -502,7 +502,36 @@ function volverAlFormulario() {
     if (markerA) { markerA.remove(); markerA = null; }
     if (markerB) { markerB.remove(); markerB = null; }
 }
-function pedirPorWhatsapp() { let origen = document.getElementById('input-origen').value; let destino = document.getElementById('input-destino').value; let precio = document.getElementById('precio-final').innerText; let numero = "5493584199122"; let mensaje = `Hola! 🚖\nQuiero solicitar un taxi.\n\n📍 *Desde:* ${origen}\n🏁 *Hasta:* ${destino}\n💰 *Precio Est:* ${precio}`; window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank'); }
+function pedirPorWhatsapp(tipo) {
+    let origen = document.getElementById('input-origen').value;
+    
+    // Si no está definida el origen real
+    if (!origen || origen === "Ubicación detectada" || origen === "Mi Ubicación Actual") {
+        showToast("Por favor selecciona una dirección exacta primero.", "error");
+        return;
+    }
+
+    let numero = "";
+    let mensaje = "";
+
+    // Bot Automático (Dorado)
+    if (tipo === 'bot') {
+        numero = "5493586540211";
+        mensaje = origen;
+    } 
+    // Opción Mascota (Verde)
+    else if (tipo === 'mascota') {
+        numero = "5493584199122";
+        mensaje = `Hola, necesito un movil a ${origen} y llevo una mascota mediana/chica`;
+    } 
+    // Opción Programar Pendiente (Verde)
+    else if (tipo === 'pendiente') {
+        numero = "5493584199122";
+        mensaje = `Hola, necesito un pendiente para las [COMPLETAR HORA]hs en ${origen}`;
+    }
+
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+}
 
 function typeWriter() {
     const text = "10% DE DESCUENTO EN TODOS TUS VIAJES!";
