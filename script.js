@@ -255,18 +255,18 @@ function intercambiarUbicaciones() {
     inputOrigen.value = inputDestino.value;
     inputDestino.value = tempVal;
 
-    const tempCoord = inputOrigen.dataset.coord;
+    const tempCoord = inputOrigen.getAttribute('data-coord');
     
-    if (inputDestino.dataset.coord) {
-         inputOrigen.dataset.coord = inputDestino.dataset.coord;
+    if (inputDestino.getAttribute('data-coord')) {
+         inputOrigen.setAttribute('data-coord', inputDestino.getAttribute('data-coord'));
     } else {
-         delete inputOrigen.dataset.coord;
+         inputOrigen.removeAttribute('data-coord');
     }
 
     if (tempCoord) {
-         inputDestino.dataset.coord = tempCoord;
+         inputDestino.setAttribute('data-coord', tempCoord);
     } else {
-         delete inputDestino.dataset.coord;
+         inputDestino.removeAttribute('data-coord');
     }
 
     inputOrigen.style.borderColor = "var(--color-principal)";
@@ -284,7 +284,7 @@ function procesarCalculo() {
     let valido = true;
 
     inputs.forEach(input => {
-        const key = input.dataset.coord;
+        const key = input.getAttribute('data-coord');
         if (key) {
             const arr = key.split(',');
             coordenadasViaje.push({ lng: parseFloat(arr[1]), lat: parseFloat(arr[0]) });
@@ -429,7 +429,7 @@ function mostrarSkeleton(lista) {
 function usarCoordenadaDirecta(nombre, lat, lon) {
     const inputActivo = document.getElementById(activeInputId);
     inputActivo.value = nombre;
-    inputActivo.dataset.coord = `${lat},${lon}`; // Store coordinates on the input itself
+    inputActivo.setAttribute('data-coord', `${lat},${lon}`);
     document.getElementById('lista-compartida').style.display = 'none';
     
     // GPS Bugfix: Force remove tracker dot if manual origin is inputted
@@ -458,7 +458,7 @@ function obtenerUbicacionActual() {
         const onExito = async function (position) {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            inputOrigen.dataset.coord = `${lat},${lon}`; // DOM-based
+            inputOrigen.setAttribute('data-coord', `${lat},${lon}`);
             map.flyTo({ center: [lon, lat], zoom: 16, essential: true });
 
             const elStart = document.createElement('div');
@@ -501,7 +501,7 @@ function obtenerUbicacionActual() {
 }
 
 function calcularDistanciaKm(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; }
-function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function () { document.getElementById('input-destino').value = datos.direccion; document.getElementById('input-destino').dataset.coord = `${datos.lat},${datos.lng}`; } } }
+function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function () { document.getElementById('input-destino').value = datos.direccion; document.getElementById('input-destino').setAttribute('data-coord', `${datos.lat},${datos.lng}`); } } }
 function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHours(); let esNoche = (hora >= 21 || hora < 7); let tarifaActual = esNoche ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia; let bajada = tarifaActual.bajada; let ficha = tarifaActual.ficha; let textoTarifa = esNoche ? "🌜 Noche" : "🌞 Día"; document.getElementById('badge-tarifa').innerText = textoTarifa; let km = distanciaCalculada; let calculoBruto = bajada + (km * ficha); let resultadoFinal = calculoBruto - (calculoBruto * 0.10); document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km'; }
 // --- BUSCADOR HÍBRIDO OPTIMIZADO CON MAPBOX GEOCODING ---
 async function buscarSugerenciasHibridas(query) {
@@ -595,6 +595,7 @@ function configurarInput(inputElement) {
     inputElement.addEventListener('input', function () {
         const query = this.value;
         const lista = document.getElementById('lista-compartida');
+        this.removeAttribute('data-coord'); // Force precise geocoding match if user modifies text
 
         // Insertar siempre inmediatamente después del contenedor de inputs de la ruta, NO adentro del label
         const container = document.querySelector('.input-route-container');
@@ -621,7 +622,14 @@ function agregarParadaMid() {
     const div = document.createElement('div');
     div.className = 'input-group-premium waypoint-group';
     div.style.marginTop = '10px';
-    div.innerHTML = `<input type="text" id="${newId}" class="input-uber" placeholder="Parada intermedia..." autocomplete="off">`;
+    div.innerHTML = `
+        <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
+            <input type="text" id="${newId}" class="input-uber" placeholder="Parada intermedia..." autocomplete="off" style="flex-grow:1;">
+            <button class="btn-remove-parada" onclick="removerParada('${newId}')" title="Quitar" style="background: transparent; color: #ff4444; border: none; cursor: pointer; padding: 10px; font-size: 1.2rem;">
+                <i class="fas fa-times-circle"></i>
+            </button>
+        </div>
+    `;
     
     // Insert Before the final Destination input
     const destinoGroup = container.lastElementChild;
@@ -638,15 +646,37 @@ function agregarParadaMid() {
     const timeline = document.querySelector('.route-timeline');
     const lineConnector = timeline.querySelector('.line-connector');
     const newDot = document.createElement('div');
+    newDot.className = 'timeline-dot-mid';
     newDot.style.width = '6px';
     newDot.style.height = '6px';
     newDot.style.backgroundColor = '#888';
     newDot.style.borderRadius = '50%';
-    newDot.style.margin = '4px 0';
+    newDot.style.margin = '4px auto';
     timeline.insertBefore(newDot, lineConnector);
 
-    // Swap button isn't built to handle N inputs, hide it if > 2
-    document.getElementById('swap-container').style.display = 'none';
+    verificarEstadoSwap();
+}
+
+function removerParada(id) {
+    const input = document.getElementById(id);
+    if(input && input.closest('.waypoint-group')) {
+        input.closest('.waypoint-group').remove();
+    }
+    const timeline = document.querySelector('.route-timeline');
+    const midDots = timeline.querySelectorAll('.timeline-dot-mid');
+    if (midDots.length > 0) {
+        midDots[0].remove(); // Eliminar solo un puntito gris
+    }
+    verificarEstadoSwap();
+}
+
+function verificarEstadoSwap() {
+    const count = document.querySelectorAll('.waypoint-group').length;
+    if (count > 1) { // includes Destino + N intermediate
+        document.getElementById('swap-container').style.display = 'none';
+    } else {
+        document.getElementById('swap-container').style.display = 'flex';
+    }
 }
 
 function mostrarSkeleton(lista) {
