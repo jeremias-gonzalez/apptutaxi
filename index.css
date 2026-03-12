@@ -288,14 +288,14 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
 .toast.success { border-left-color: #00C851; }
 @media (max-width: 600px) {
     .panel-inputs { 
-        top: auto; bottom: 0; left: 0; width: 100%; max-width: none; 
-        border-radius: 24px 24px 0 0; border: none; border-top: 1px solid var(--color-borde);
-        padding: 20px 20px 25px 20px; box-sizing: border-box; 
-        transform: translateY(100%); 
-        max-height: 85vh; /* Permitir que crezca más arriba tapando el mapa */
+        top: 0; bottom: auto; left: 0; width: 100%; max-width: none; 
+        border-radius: 0 0 24px 24px; border: none; border-bottom: 1px solid var(--color-borde);
+        padding: 15px 15px 20px 15px; box-sizing: border-box; 
+        transform: translateY(-100%); 
+        max-height: 85vh; /* Expands downwards over the map without pushing top off screen */
         overflow-y: auto; 
     }
-    .panel-inputs.hidden { transform: translateY(100%); }
+    .panel-inputs.hidden { transform: translateY(-100%); }
     .panel-inputs:not(.hidden) { transform: translateY(0); }
     .panel-resultados { bottom: 0; width: 100%; max-width: none; border-radius: 24px 24px 0 0; padding-bottom: 40px; }
 }
