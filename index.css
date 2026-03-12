@@ -115,7 +115,7 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
 .btn-swap:hover { background: rgba(60, 60, 60, 0.9); transform: translateY(-18px) scale(1.1) rotate(180deg); color: var(--color-principal); border-color: var(--color-principal); }
 .btn-swap:active { transform: translateY(-18px) scale(0.95); }
 
-#lista-compartida { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; list-style: none; padding: 0; margin: 0; background: var(--color-panel); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--color-borde); max-height: 250px; overflow-y: auto; display: none; z-index: 3000; border-radius: 12px; box-shadow: var(--glass-shadow); scrollbar-width: thin; scrollbar-color: #555 transparent; }
+#lista-compartida { position: relative; width: 100%; list-style: none; padding: 0; margin: 10px 0 0 0; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); max-height: 250px; overflow-y: auto; display: none; z-index: 3000; border-radius: 12px; scrollbar-width: thin; scrollbar-color: #555 transparent; transition: all 0.3s ease; }
 #lista-compartida li { padding: 14px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; display: flex; align-items: center; gap: 14px; transition: background 0.2s; }
 #lista-compartida li:last-child { border-bottom: none; }
 #lista-compartida li:hover { background: rgba(255, 255, 255, 0.1); }
@@ -363,3 +363,31 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
 .modal-buttons { display: flex; gap: 10px; }
 .btn-modal-cancel { flex: 1; background: transparent; color: #ccc; border: 1px solid #555; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; }
 .btn-modal-confirm { flex: 1; background: var(--color-principal); color: #000; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+
+/* Custom Map Modifier Popups */
+.custom-map-popup .mapboxgl-popup-content {
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+}
+.custom-map-popup .mapboxgl-popup-tip {
+    display: none;
+}
+.btn-map-modifier {
+    background: var(--color-panel);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    transition: all 0.2s;
+}
+.btn-map-modifier:hover {
+    background: var(--color-principal);
+    color: black;
+    border-color: var(--color-principal);
+}
