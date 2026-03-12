@@ -174,11 +174,18 @@ async function calcularRutaDirecta(origen, destino) {
         elEnd.className = 'uber-destino-container';
         elEnd.innerHTML = '<div class="uber-destino"></div>';
 
+        const rawOrigen = document.getElementById('input-origen').value;
+        const nombreOrigen = (rawOrigen && rawOrigen !== "Ubicación detectada" && rawOrigen !== "Mi Ubicación Actual") ? rawOrigen : 'Punto de partida';
+        const labelA = nombreOrigen.length > 28 ? nombreOrigen.substring(0, 25) + '...' : nombreOrigen;
+
+        const rawDestino = document.getElementById('input-destino').value || 'Destino';
+        const labelB = rawDestino.length > 28 ? rawDestino.substring(0, 25) + '...' : rawDestino;
+
         const popupOrigen = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false, className: 'custom-map-popup' })
-            .setHTML('<button onclick="editarInput(\'origen\')" class="btn-map-modifier"><i class="fas fa-edit"></i> Modificar Origen</button>');
+            .setHTML(`<button onclick="editarInput('origen')" class="btn-map-modifier">${labelA} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`);
 
         const popupDestino = new mapboxgl.Popup({ offset: [0, -25], closeButton: false, closeOnClick: false, className: 'custom-map-popup' })
-            .setHTML('<button onclick="editarInput(\'destino\')" class="btn-map-modifier"><i class="fas fa-edit"></i> Modificar Destino</button>');
+            .setHTML(`<button onclick="editarInput('destino')" class="btn-map-modifier">${labelB} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`);
 
         markerA = new mapboxgl.Marker(elStart)
             .setLngLat([origen.lng, origen.lat])
@@ -718,35 +725,12 @@ function confirmarProgramacion() {
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
-function typeWriter() {
-    const text = "10% DE DESCUENTO EN TODOS TUS VIAJES!";
-    const element = document.getElementById('typing-text');
-    const speed = 70;
-    let i = 0;
-    function type() {
-        if (i < text.length) {
-            element.innerHTML += text.charAt(i);
-            i++;
-            setTimeout(type, speed);
-        }
-    }
-    setTimeout(type, 500);
-}
-
 window.addEventListener('load', () => {
     cargarLugaresVIP();
     cargarTarifas();
-    typeWriter();
-    setTimeout(() => {
-        document.getElementById('splash-logo-container').style.display = 'none';
-        document.getElementById('splash-loader-container').style.display = 'flex';
-        setTimeout(() => {
-            document.getElementById('splash-screen').classList.add('splash-hidden');
-            obtenerUbicacionActual();
-            cargarHistorial();
-            inicializarInputs();
-        }, 3500);
-    }, 2000);
+    obtenerUbicacionActual();
+    cargarHistorial();
+    inicializarInputs();
 });
 
 function togglePanelResultados() {

@@ -48,6 +48,27 @@ body { margin: 0; padding: 0; font-family: 'Outfit', -apple-system, BlinkMacSyst
     0%, 100% { opacity: 1; }
     50% { opacity: 0; }
 }
+/* CSS para el banner neo-glowing rápido */
+.flashy-discount-banner {
+    background: linear-gradient(90deg, #ff007f, #7f00ff, #00d4ff, #ff007f);
+    background-size: 300% 100%;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 900;
+    text-align: center;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: gradientFast 2s infinite linear;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.6);
+}
+
+@keyframes gradientFast {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
 
 /* PUNTOS Y ANIMACIONES MAPA */
 .gps-dot-container { width: 20px; height: 20px; position: relative; }
