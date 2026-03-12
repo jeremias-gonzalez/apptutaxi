@@ -44,17 +44,21 @@
                 <div class="line-connector"></div>
                 <div class="square-destination"></div>
             </div>
-            <div class="route-inputs">
+            <div class="route-inputs" id="route-inputs-container">
                 <div class="input-group-premium">
                     <input type="text" id="input-origen" class="input-uber" placeholder="Punto de partida..." autocomplete="off">
                 </div>
-                <div class="input-group-premium" style="margin-top: 10px;">
+                <div class="input-group-premium waypoint-group" style="margin-top: 10px;">
                     <input type="text" id="input-destino" class="input-uber" placeholder="¿A dónde vamos?" autocomplete="off">
                 </div>
             </div>
         </div>
 
-        <div class="swap-container">
+        <button class="btn-add-parada" onclick="agregarParadaMid()" title="Añadir una parada intermedia">
+             <i class="fas fa-plus"></i> Añadir parada
+        </button>
+
+        <div class="swap-container" id="swap-container">
             <button class="btn-swap" onclick="intercambiarUbicaciones()" title="Invertir Origen y Destino">
                 <i class="fas fa-exchange-alt fa-rotate-90"></i>
             </button>

@@ -68,9 +68,10 @@ function showToast(mensaje, tipo = 'normal') {
 
 // Removed duplicate let declarations
 
-async function calcularRutaDirecta(origen, destino) {
-    // Usamos 'driving-traffic' en lugar de driving normal para obtener la ruta más rápida considerando el tráfico en vivo.
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${origen.lng},${origen.lat};${destino.lng},${destino.lat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+async function calcularRutaDirecta(coordenadasViaje) {
+    // Dynamic coordinate string for waypoints
+    const coordString = coordenadasViaje.map(c => `${c.lng},${c.lat}`).join(';');
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coordString}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
 
     try {
         const response = await fetch(url);
@@ -170,36 +171,44 @@ async function calcularRutaDirecta(origen, destino) {
         elStart.className = 'uber-origen-container';
         elStart.innerHTML = '<div class="uber-origen-pulse"></div><div class="uber-origen"></div>';
 
-        const elEnd = document.createElement('div');
-        elEnd.className = 'uber-destino-container';
-        elEnd.innerHTML = '<div class="uber-destino"></div>';
+        // Limpiar popups viejos si hay
+        document.querySelectorAll('.mapboxgl-popup').forEach(p => p.remove());
 
-        const rawOrigen = document.getElementById('input-origen').value;
-        const nombreOrigen = (rawOrigen && rawOrigen !== "Ubicación detectada" && rawOrigen !== "Mi Ubicación Actual") ? rawOrigen : 'Punto de partida';
-        const labelA = nombreOrigen.length > 28 ? nombreOrigen.substring(0, 25) + '...' : nombreOrigen;
+        // Add/Update Markers for Waypoints
+        if (window.routeMarkers) {
+            window.routeMarkers.forEach(m => m.remove());
+        }
+        window.routeMarkers = [];
 
-        const rawDestino = document.getElementById('input-destino').value || 'Destino';
-        const labelB = rawDestino.length > 28 ? rawDestino.substring(0, 25) + '...' : rawDestino;
+        coordenadasViaje.forEach((coord, index) => {
+            let el = document.createElement('div');
+            let popupHtml = '';
+            
+            if (index === 0) {
+                el.className = 'uber-origen-container';
+                el.innerHTML = '<div class="uber-origen-pulse"></div><div class="uber-origen"></div>';
+                let rawOrigen = document.getElementById('input-origen').value;
+                let nombreOrigen = (rawOrigen && rawOrigen !== "Ubicación detectada" && rawOrigen !== "Mi Ubicación Actual") ? rawOrigen : 'Punto de partida';
+                let labelA = nombreOrigen.length > 28 ? nombreOrigen.substring(0, 25) + '...' : nombreOrigen;
+                popupHtml = `<button onclick="editarInput('input-origen')" class="btn-map-modifier">${labelA} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`;
+            } else if (index === coordenadasViaje.length - 1) {
+                el.className = 'uber-destino-container';
+                el.innerHTML = '<div class="uber-destino"></div>';
+                let rawDestino = document.getElementById('input-destino').value || 'Destino';
+                let labelB = rawDestino.length > 28 ? rawDestino.substring(0, 25) + '...' : rawDestino;
+                popupHtml = `<button onclick="editarInput('input-destino')" class="btn-map-modifier">${labelB} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`;
+            } else {
+                // Parada intermedia marker
+                el.className = 'uber-parada-container';
+                el.innerHTML = '<div class="uber-parada"></div>';
+                popupHtml = `<button class="btn-map-modifier"><i class="fas fa-flag"></i> Parada ${index}</button>`;
+            }
 
-        const popupOrigen = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false, className: 'custom-map-popup' })
-            .setHTML(`<button onclick="editarInput('origen')" class="btn-map-modifier">${labelA} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`);
-
-        const popupDestino = new mapboxgl.Popup({ offset: [0, -25], closeButton: false, closeOnClick: false, className: 'custom-map-popup' })
-            .setHTML(`<button onclick="editarInput('destino')" class="btn-map-modifier">${labelB} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`);
-
-        markerA = new mapboxgl.Marker(elStart)
-            .setLngLat([origen.lng, origen.lat])
-            .setPopup(popupOrigen)
-            .addTo(map);
-
-        markerB = new mapboxgl.Marker({ element: elEnd, offset: [0, -15] })
-            .setLngLat([destino.lng, destino.lat])
-            .setPopup(popupDestino)
-            .addTo(map);
-
-        // Open popups by default
-        markerA.togglePopup();
-        markerB.togglePopup();
+            const popup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false, className: 'custom-map-popup' }).setHTML(popupHtml);
+            const m = new mapboxgl.Marker({ element: el, offset: index===0?[0,0]:[0,-15] }).setLngLat([coord.lng, coord.lat]).setPopup(popup).addTo(map);
+            m.togglePopup();
+            window.routeMarkers.push(m);
+        });
 
         // Adjust map bounds
         const bounds = new mapboxgl.LngLatBounds(
@@ -242,12 +251,24 @@ async function calcularRutaDirecta(origen, destino) {
 function intercambiarUbicaciones() {
     const inputOrigen = document.getElementById('input-origen');
     const inputDestino = document.getElementById('input-destino');
-    const textoTemp = inputOrigen.value;
+    const tempVal = inputOrigen.value;
     inputOrigen.value = inputDestino.value;
-    inputDestino.value = textoTemp;
-    const coordTemp = coordOrigen;
-    coordOrigen = coordDestino;
-    coordDestino = coordTemp;
+    inputDestino.value = tempVal;
+
+    const tempCoord = inputOrigen.dataset.coord;
+    
+    if (inputDestino.dataset.coord) {
+         inputOrigen.dataset.coord = inputDestino.dataset.coord;
+    } else {
+         delete inputOrigen.dataset.coord;
+    }
+
+    if (tempCoord) {
+         inputDestino.dataset.coord = tempCoord;
+    } else {
+         delete inputDestino.dataset.coord;
+    }
+
     inputOrigen.style.borderColor = "var(--color-principal)";
     inputDestino.style.borderColor = "var(--color-principal)";
     setTimeout(() => {
@@ -257,19 +278,31 @@ function intercambiarUbicaciones() {
 }
 
 function procesarCalculo() {
-    if (!coordOrigen || !coordDestino) {
-        showToast("Debes seleccionar ambas direcciones", "error");
-        document.getElementById('input-origen').style.borderColor = "#ff4444";
-        document.getElementById('input-destino').style.borderColor = "#ff4444";
-        setTimeout(() => {
-            document.getElementById('input-origen').style.borderColor = "var(--color-borde)";
-            document.getElementById('input-destino').style.borderColor = "var(--color-borde)";
-        }, 500);
+    // 1. Gather all coordinate inputs
+    const inputs = Array.from(document.querySelectorAll('.input-uber'));
+    const coordenadasViaje = [];
+    let valido = true;
+
+    inputs.forEach(input => {
+        const key = input.dataset.coord;
+        if (key) {
+            const arr = key.split(',');
+            coordenadasViaje.push({ lng: parseFloat(arr[1]), lat: parseFloat(arr[0]) });
+        } else {
+            input.style.borderColor = "#ff4444";
+            valido = false;
+            setTimeout(() => { input.style.borderColor = "var(--color-borde)"; }, 500);
+        }
+    });
+
+    if (!valido || coordenadasViaje.length < 2) {
+        showToast("Debes seleccionar direcciones válidas para todas las paradas", "error");
         return;
     }
+
     showToast("Calculando la mejor ruta...", "success");
     document.getElementById('loader').style.display = 'flex';
-    calcularRutaDirecta(coordOrigen, coordDestino);
+    calcularRutaDirecta(coordenadasViaje);
 }
 
 // --- BUSCADOR HÍBRIDO OPTIMIZADO CON MAPBOX GEOCODING ---
@@ -396,9 +429,23 @@ function mostrarSkeleton(lista) {
 function usarCoordenadaDirecta(nombre, lat, lon) {
     const inputActivo = document.getElementById(activeInputId);
     inputActivo.value = nombre;
+    inputActivo.dataset.coord = `${lat},${lon}`; // Store coordinates on the input itself
     document.getElementById('lista-compartida').style.display = 'none';
-    const latlng = { lat: lat, lng: lon }; // Mapbox GL JS friendly
-    if (activeInputId === 'input-origen') { coordOrigen = latlng; } else { coordDestino = latlng; const datosAGuardar = { direccion: nombre, lat: lat, lng: lon }; localStorage.setItem('ultimoDestinoTaxi', JSON.stringify(datosAGuardar)); cargarHistorial(); }
+    
+    // GPS Bugfix: Force remove tracker dot if manual origin is inputted
+    if (activeInputId === 'input-origen') {
+        if (gpsMarker) {
+            gpsMarker.remove();
+            gpsMarker = null;
+        }
+    } 
+
+    // Historic fix
+    if (activeInputId === 'input-destino') { 
+        const datosAGuardar = { direccion: nombre, lat: lat, lng: lon }; 
+        localStorage.setItem('ultimoDestinoTaxi', JSON.stringify(datosAGuardar)); 
+        cargarHistorial(); 
+    }
 }
 
 // Ya no usamos resolverUbicacion porque la API de Mapbox nos da las lat/lng directamente en la primera petición. (Se borra la función)
@@ -411,7 +458,7 @@ function obtenerUbicacionActual() {
         const onExito = async function (position) {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            coordOrigen = { lat: lat, lng: lon }; // Mapbox GL JS friendly
+            inputOrigen.dataset.coord = `${lat},${lon}`; // DOM-based
             map.flyTo({ center: [lon, lat], zoom: 16, essential: true });
 
             const elStart = document.createElement('div');
@@ -454,7 +501,7 @@ function obtenerUbicacionActual() {
 }
 
 function calcularDistanciaKm(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; }
-function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function () { document.getElementById('input-destino').value = datos.direccion; coordDestino = { lat: datos.lat, lng: datos.lng }; } } }
+function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function () { document.getElementById('input-destino').value = datos.direccion; document.getElementById('input-destino').dataset.coord = `${datos.lat},${datos.lng}`; } } }
 function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHours(); let esNoche = (hora >= 21 || hora < 7); let tarifaActual = esNoche ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia; let bajada = tarifaActual.bajada; let ficha = tarifaActual.ficha; let textoTarifa = esNoche ? "🌜 Noche" : "🌞 Día"; document.getElementById('badge-tarifa').innerText = textoTarifa; let km = distanciaCalculada; let calculoBruto = bajada + (km * ficha); let resultadoFinal = calculoBruto - (calculoBruto * 0.10); document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km'; }
 // --- BUSCADOR HÍBRIDO OPTIMIZADO CON MAPBOX GEOCODING ---
 async function buscarSugerenciasHibridas(query) {
@@ -560,6 +607,46 @@ function configurarInput(inputElement) {
         mostrarSkeleton(lista);
         timeout = setTimeout(() => { buscarSugerenciasHibridas(query); }, 300);
     });
+}
+
+function agregarParadaMid() {
+    const container = document.getElementById('route-inputs-container');
+    const waypointsCount = container.querySelectorAll('.waypoint-group').length;
+    if (waypointsCount >= 4) {
+        showToast("Solo se permiten hasta 3 paradas intermedias", "normal");
+        return;
+    }
+
+    const newId = 'input-parada-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'input-group-premium waypoint-group';
+    div.style.marginTop = '10px';
+    div.innerHTML = `<input type="text" id="${newId}" class="input-uber" placeholder="Parada intermedia..." autocomplete="off">`;
+    
+    // Insert Before the final Destination input
+    const destinoGroup = container.lastElementChild;
+    container.insertBefore(div, destinoGroup);
+
+    const newInput = document.getElementById(newId);
+    newInput.addEventListener('focus', () => { 
+        activeInputId = newId; 
+        document.getElementById('lista-compartida').style.display = 'none'; 
+    });
+    configurarInput(newInput);
+    
+    // Animate timeline appearance
+    const timeline = document.querySelector('.route-timeline');
+    const lineConnector = timeline.querySelector('.line-connector');
+    const newDot = document.createElement('div');
+    newDot.style.width = '6px';
+    newDot.style.height = '6px';
+    newDot.style.backgroundColor = '#888';
+    newDot.style.borderRadius = '50%';
+    newDot.style.margin = '4px 0';
+    timeline.insertBefore(newDot, lineConnector);
+
+    // Swap button isn't built to handle N inputs, hide it if > 2
+    document.getElementById('swap-container').style.display = 'none';
 }
 
 function mostrarSkeleton(lista) {
