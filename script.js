@@ -292,23 +292,26 @@ async function buscarSugerenciasHibridas(query) {
         }
     }
 
-    const resultadosLocales = LUGARES_VIP.filter(lugar =>
-        lugar.nombre.toLowerCase().includes(queryLower) ||
-        lugar.alias.some(alias => alias.includes(queryLower))
-    );
+    // Multi-word fuzzy search for local POIs
+    const queryWords = queryLower.split(' ').filter(word => word.length > 0);
+    const resultadosLocales = LUGARES_VIP.filter(lugar => {
+        const nombreYAliasCombinados = lugar.nombre.toLowerCase() + " " + (lugar.alias ? lugar.alias.join(" ") : "");
+        // Check if ALL typed words exist somewhere in the name or aliases
+        return queryWords.every(word => nombreYAliasCombinados.includes(word));
+    });
 
     resultadosLocales.forEach(lugar => {
         nombresVistos.add(lugar.nombre.toLowerCase());
         const keyCoord = lugar.lat.toFixed(3) + "," + lugar.lon.toFixed(3);
         coordenadasVistas.add(keyCoord);
         const li = document.createElement('li');
-        li.style.background = "rgba(40,40,40,0.8)";
-        li.innerHTML = `<div class="result-icon" style="color: gold;"><i class="fas fa-star"></i></div><div class="result-text"><span class="result-title">${lugar.nombre}</span><span class="result-sub">${lugar.direccion}</span></div>`;
+        // Seamless UI: Use the exact same icon and styling as Mapbox results
+        li.innerHTML = `<div class="result-icon"><i class="fas fa-map-marker-alt"></i></div><div class="result-text"><span class="result-title">${lugar.nombre}</span><span class="result-sub">${lugar.direccion}</span></div>`;
         li.onclick = () => { usarCoordenadaDirecta(lugar.nombre, lugar.lat, lugar.lon); };
         lista.appendChild(li);
     });
 
-    const urlMapbox = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(busquedaParaApi)}.json?bbox=${RIO_BBOX}&proximity=${RIO_CUARTO_LON},${RIO_CUARTO_LAT}&types=address,poi,neighborhood&language=es&access_token=${MAPBOX_TOKEN}`;
+    const urlMapbox = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(busquedaParaApi)}.json?bbox=${RIO_BBOX}&proximity=${RIO_CUARTO_LON},${RIO_CUARTO_LAT}&types=address,poi,neighborhood&language=es&autocomplete=true&fuzzyMatch=true&access_token=${MAPBOX_TOKEN}`;
 
     try {
         const response = await fetch(urlMapbox);
