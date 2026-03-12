@@ -14,61 +14,18 @@ var map = new mapboxgl.Map({
     style: 'mapbox://styles/mapbox/dark-v11',
     center: [RIO_CUARTO_LON, RIO_CUARTO_LAT],
     zoom: 14,
-    pitch: 60, // Añade el aspecto 3D
-    bearing: -17.6 // Gira ligeramente la ciudad
+    pitchWithRotate: false,
+    dragRotate: false // Bloqueamos la rotación 3D para máximo rendimiento 2D
 });
 
-map.once('idle', () => {
-    // Insertar la capa de edificios en 3D debajo de las etiquetas
-    const layers = map.getStyle().layers;
-    let labelLayerId;
-    for (let i = 0; i < layers.length; i++) {
-        if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
-            labelLayerId = layers[i].id;
-            break;
-        }
-    }
-
-    map.addLayer(
-        {
-            'id': 'add-3d-buildings',
-            'source': 'composite',
-            'source-layer': 'building',
-            'filter': ['==', 'extrude', 'true'],
-            'type': 'fill-extrusion',
-            'minzoom': 16, // Aumentado para mejor performance (solo se ve de muy cerca)
-            'paint': {
-                'fill-extrusion-color': '#2a2a2a',
-                'fill-extrusion-height': [
-                    'interpolate',
-                    ['linear'],
-                    ['zoom'],
-                    16, // Coincide con minzoom
-                    0,
-                    16.05,
-                    ['get', 'height']
-                ],
-                'fill-extrusion-base': [
-                    'interpolate',
-                    ['linear'],
-                    ['zoom'],
-                    16, // Coincide con minzoom
-                    0,
-                    16.05,
-                    ['get', 'min_height']
-                ],
-                'fill-extrusion-opacity': 0.8
-            }
-        },
-        labelLayerId
-    );
-});
-
-var coordOrigen = null;
-var coordDestino = null;
-var distanciaCalculada = 0;
-var activeInputId = null;
-var gpsMarker = null;
+// Definir variables globales para marcadores y ruta
+let markerA, markerB, gpsMarker;
+let routeControl;
+let coordOrigen = null;
+let coordDestino = null;
+let activeInputId = '';
+let polylineRuta = false;
+let distanciaCalculada = 0;
 
 async function cargarLugaresVIP() {
     try {
@@ -109,9 +66,7 @@ function showToast(mensaje, tipo = 'normal') {
 
 
 
-let polylineRuta = null;
-let markerA = null;
-let markerB = null;
+// Removed duplicate let declarations
 
 async function calcularRutaDirecta(origen, destino) {
     // Usamos 'driving-traffic' en lugar de driving normal para obtener la ruta más rápida considerando el tráfico en vivo.
@@ -237,8 +192,7 @@ async function calcularRutaDirecta(origen, destino) {
         }
 
         map.fitBounds(bounds, {
-            padding: { top: 50, bottom: 400, left: 50, right: 50 },
-            pitch: 50
+            padding: { top: 50, bottom: 400, left: 50, right: 50 }
         });
 
         // Use summary distance
@@ -250,6 +204,11 @@ async function calcularRutaDirecta(origen, destino) {
         document.getElementById('panel-inputs').classList.add('hidden');
         document.getElementById('panel-resultados').classList.remove('minimized'); // Asegurarnos que no arranque minimizado
         document.getElementById('panel-resultados').classList.add('visible');
+        
+        // --- Populate and show Floating Trip Card ---
+        document.getElementById('origen-text').innerText = inputOrigen || "Ubicación Actual";
+        document.getElementById('destino-text').innerText = inputDestino;
+        document.getElementById('floating-trip-card').classList.add('visible');
 
         // Hide GPS marker permanently while viewing the route directly
         if (gpsMarker) { gpsMarker.remove(); }
@@ -478,6 +437,7 @@ function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHour
 function volverAlFormulario() {
     document.getElementById('panel-resultados').classList.remove('visible');
     document.getElementById('panel-resultados').classList.remove('minimized');
+    document.getElementById('floating-trip-card').classList.remove('visible');
     document.getElementById('panel-inputs').classList.remove('hidden');
 
     // Restore GPS marker unconditionally
@@ -486,7 +446,7 @@ function volverAlFormulario() {
     }
 
     // Reset View
-    map.flyTo({ center: [RIO_CUARTO_LON, RIO_CUARTO_LAT], zoom: 14, pitch: 60, essential: true });
+    map.flyTo({ center: [RIO_CUARTO_LON, RIO_CUARTO_LAT], zoom: 14, pitch: 0, bearing: 0, essential: true });
 
     if (map.getSource('route')) {
         map.getSource('route').setData({
@@ -519,17 +479,41 @@ function pedirPorWhatsapp(tipo) {
         numero = "5493586540211";
         mensaje = origen;
     } 
-    // Opción Mascota (Verde)
+// Opción Mascota (Verde)
     else if (tipo === 'mascota') {
         numero = "5493584199122";
         mensaje = `Hola, necesito un movil a ${origen} y llevo una mascota mediana/chica`;
     } 
     // Opción Programar Pendiente (Verde)
     else if (tipo === 'pendiente') {
-        numero = "5493584199122";
-        mensaje = `Hola, necesito un pendiente para las [COMPLETAR HORA]hs en ${origen}`;
+        // En lugar de enviar directo, abrimos modal interactivo
+        document.getElementById('modal-programar').classList.add('visible');
+        return; 
     }
 
+    if (numero !== "") {
+        window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+    }
+}
+
+// --- LOGICA MODAL PROGRAMACION ---
+function cerrarModalProgramar() {
+    document.getElementById('modal-programar').classList.remove('visible');
+}
+
+function confirmarProgramacion() {
+    let origen = document.getElementById('input-origen').value;
+    let horaInput = document.getElementById('input-hora-programada').value;
+
+    if (!horaInput) {
+        showToast("Por favor selecciona una hora.", "error");
+        return;
+    }
+
+    document.getElementById('modal-programar').classList.remove('visible');
+    
+    let numero = "5493584199122";
+    let mensaje = `Hola, necesito un pendiente para las ${horaInput}hs en ${origen}`;
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 

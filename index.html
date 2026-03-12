@@ -48,20 +48,26 @@
     <div id="panel-inputs" class="panel-inputs">
         <h2>Viajá con seguridad, elegí TuTaxi.</h2>
         
-        <div class="input-group">
-            <i class="fas fa-car input-icon"></i>
-            <input type="text" id="input-origen" class="input-uber" placeholder="Obteniendo ubicación..." autocomplete="off">
+        <div class="input-route-container">
+            <div class="route-timeline">
+                <div class="dot-origin"></div>
+                <div class="line-connector"></div>
+                <div class="square-destination"></div>
+            </div>
+            <div class="route-inputs">
+                <div class="input-group-premium">
+                    <input type="text" id="input-origen" class="input-uber" placeholder="Punto de partida..." autocomplete="off">
+                </div>
+                <div class="input-group-premium" style="margin-top: 10px;">
+                    <input type="text" id="input-destino" class="input-uber" placeholder="¿A dónde vamos?" autocomplete="off">
+                </div>
+            </div>
         </div>
 
         <div class="swap-container">
             <button class="btn-swap" onclick="intercambiarUbicaciones()" title="Invertir Origen y Destino">
                 <i class="fas fa-exchange-alt fa-rotate-90"></i>
             </button>
-        </div>
-
-        <div class="input-group">
-            <i class="fas fa-flag-checkered input-icon"></i>
-            <input type="text" id="input-destino" class="input-uber" placeholder="Ej: Terminal, Centro..." autocomplete="off">
         </div>
 
         <ul id="lista-compartida"></ul>
@@ -73,10 +79,31 @@
         <button class="btn-accion btn-calcular" onclick="procesarCalculo()">
             CALCULAR PRECIO AHORA
         </button>
-        
-        <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;">
-            <div style="font-size: 0.7rem; color: #666; margin-bottom: 5px;">COBERTURA:</div>
-            <div style="font-size: 0.75rem; color: #aaa;">Río Cuarto • Las Higueras • Santa Catalina</div>
+    </div>
+
+    <!-- Tarjeta Flotante Direccional (Oculta por defecto) -->
+    <div id="floating-trip-card" class="floating-trip-card" onclick="volverAlFormulario()">
+        <div class="floating-route">
+            <div class="dot-origin-small"></div>
+            <div class="floating-address" id="origen-text">Origen</div>
+        </div>
+        <div class="floating-separator"></div>
+        <div class="floating-route">
+            <div class="square-destination-small"></div>
+            <div class="floating-address" id="destino-text">Destino</div>
+        </div>
+    </div>
+
+    <!-- Modal para Programar Viaje -->
+    <div id="modal-programar" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Programar Viaje</h3>
+            <p>¿A qué hora necesitas el taxi en la puerta?</p>
+            <input type="time" id="input-hora-programada" class="time-picker">
+            <div class="modal-buttons">
+                <button class="btn-modal-cancel" onclick="cerrarModalProgramar()">Cancelar</button>
+                <button class="btn-modal-confirm" onclick="confirmarProgramacion()">Solicitar</button>
+            </div>
         </div>
     </div>
 
