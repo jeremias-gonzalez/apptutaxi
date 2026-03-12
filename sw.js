@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tutaxi-v1';
+const CACHE_NAME = 'tutaxi-v2'; // Changed version to bust cache
 const ASSETS = [
     './',
     './index.html',
@@ -15,10 +15,10 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', event => {
+    self.skipWaiting(); // Force the waiting service worker to become the active service worker
     event.waitUntil(
         caches.open(CACHE_NAME)
         .then(cache => cache.addAll(ASSETS))
-        .then(() => self.skipWaiting())
     );
 });
 
@@ -29,30 +29,41 @@ self.addEventListener('activate', event => {
                 keys.filter(key => key !== CACHE_NAME)
                 .map(key => caches.delete(key))
             );
-        })
+        }).then(() => self.clients.claim()) // claim clients immediately
     );
 });
 
 self.addEventListener('fetch', event => {
-    // Para rutas dinámicas, prefiero primero la red y luego la caché (opcional).
-    // Para lo estático, intentamos caché primero.
+    // Para llamadas a APIs externas críticas, solo Fetch
     if (event.request.url.includes('geocode.arcgis.com') || 
         event.request.url.includes('router.project-osrm.org') || 
         event.request.url.includes('api.mapbox.com')) {
-        event.respondWith(
-            fetch(event.request).catch(err => {
-                console.warn('Error en fetch dinámico:', err);
-                return caches.match(event.request);
-            })
-        );
+        event.respondWith(fetch(event.request));
         return;
     }
 
+    // Estrategia Network-First para asegurar que el usuario siempre
+    // tenga la app y script más recientes. Si no hay internet,
+    // cae (fallback) al caché.
     event.respondWith(
-        caches.match(event.request).then(response => {
-            return response || fetch(event.request).catch(() => {
-                // Opcional: retornar una página offline genérica
-            });
+        fetch(event.request).then(response => {
+            // Actualizar el caché en segundo plano
+            if (response && response.status === 200 && response.type === 'basic') {
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseClone);
+                });
+            }
+            return response;
+        }).catch(() => {
+            // Si la red falla (offline), retorna del caché
+            return caches.match(event.request);
         })
     );
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

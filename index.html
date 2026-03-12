@@ -101,6 +101,15 @@
 
     <div id="map"></div>
 
+    <!-- Banner de actualización PWA -->
+    <div id="update-banner">
+        <div>
+            <div style="font-weight: bold; font-size: 0.95rem;">¡Nueva versión!</div>
+            <div style="font-size: 0.8rem; color: #ccc;">Actualiza para mejorar la app.</div>
+        </div>
+        <button id="btn-actualizar-app" class="btn-actualizar">Refrescar</button>
+    </div>
+
     <div id="toast-container"></div>
 
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
@@ -109,13 +118,50 @@
     <script src="env.js"></script>
     <script src="script.js"></script>
 
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration con Auto-Updater -->
     <script>
+        let newWorker;
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker Registrado!', reg))
-                    .catch(err => console.error('Error registrando Service Worker', err));
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('Service Worker Registrado!', reg);
+                    
+                    reg.addEventListener('updatefound', () => {
+                        // Un nuevo service worker fue descargado
+                        newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            // Cuando el nuevo SW esté instalado y haya uno viejo controlando la página
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Mostrar el banner de actualización
+                                document.getElementById('update-banner').classList.add('visible');
+                            }
+                        });
+                    });
+                }).catch(err => console.error('Error registrando Service Worker', err));
+                
+                // Si hay un SW esperándo que nadie recargó antes
+                navigator.serviceWorker.ready.then(reg => {
+                    if (reg.waiting) {
+                        newWorker = reg.waiting;
+                        document.getElementById('update-banner').classList.add('visible');
+                    }
+                });
+            });
+
+            let refreshing = false;
+            // Detecta cuando el nuevo SW toma el control (después de skipWaiting)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    window.location.reload();
+                    refreshing = true;
+                }
+            });
+
+            // Lógica del botón de actualizar
+            document.getElementById('btn-actualizar-app').addEventListener('click', () => {
+                if (newWorker) {
+                    newWorker.postMessage('SKIP_WAITING');
+                }
             });
         }
     </script>

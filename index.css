@@ -238,3 +238,45 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
     .panel-inputs:not(.hidden) { transform: translateY(0); }
     .panel-resultados { bottom: 0; width: 100%; max-width: none; border-radius: 24px 24px 0 0; padding-bottom: 40px; }
 }
+
+/* --- UPDATE BANNER PWA --- */
+#update-banner {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(150%);
+    background: var(--color-panel);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 15px;
+    border: 1px solid var(--color-principal);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    width: 90%;
+    max-width: 400px;
+    justify-content: space-between;
+}
+
+#update-banner.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.btn-actualizar {
+    background: linear-gradient(135deg, var(--color-principal) 0%, #FDB931 100%);
+    color: #000;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 5px rgba(255, 215, 0, 0.3);
+}
