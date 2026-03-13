@@ -190,13 +190,13 @@ async function calcularRutaDirecta(coordenadasViaje) {
                 let rawOrigen = document.getElementById('input-origen').value;
                 let nombreOrigen = (rawOrigen && rawOrigen !== "Ubicación detectada" && rawOrigen !== "Mi Ubicación Actual") ? rawOrigen : 'Punto de partida';
                 let labelA = nombreOrigen.length > 28 ? nombreOrigen.substring(0, 25) + '...' : nombreOrigen;
-                popupHtml = `<button onclick="editarInput('input-origen')" class="btn-map-modifier">${labelA} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`;
+                popupHtml = `<button onclick="editarInput('origen')" class="btn-map-modifier">${labelA} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`;
             } else if (index === coordenadasViaje.length - 1) {
                 el.className = 'uber-destino-container';
                 el.innerHTML = '<div class="uber-destino"></div>';
                 let rawDestino = document.getElementById('input-destino').value || 'Destino';
                 let labelB = rawDestino.length > 28 ? rawDestino.substring(0, 25) + '...' : rawDestino;
-                popupHtml = `<button onclick="editarInput('input-destino')" class="btn-map-modifier">${labelB} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`;
+                popupHtml = `<button onclick="editarInput('destino')" class="btn-map-modifier">${labelB} <i class="fas fa-arrow-right" style="margin-left:5px;"></i></button>`;
             } else {
                 // Parada intermedia marker
                 el.className = 'uber-parada-container';
@@ -234,12 +234,14 @@ async function calcularRutaDirecta(coordenadasViaje) {
         document.getElementById('panel-resultados').classList.add('visible');
         
         // --- Populate and show Floating Trip Card ---
-        document.getElementById('origen-text').innerText = inputOrigen || "Ubicación Actual";
-        document.getElementById('destino-text').innerText = inputDestino;
+        document.getElementById('origen-text').innerText = document.getElementById('input-origen').value || "Ubicación Actual";
+        document.getElementById('destino-text').innerText = document.getElementById('input-destino').value;
         document.getElementById('floating-trip-card').classList.add('visible');
 
         // Hide GPS marker permanently while viewing the route directly
         if (gpsMarker) { gpsMarker.remove(); }
+        
+        showToast("¡Ruta calculada con éxito!", "success");
 
     } catch (error) {
         console.error("Error calculando ruta:", error);
@@ -346,7 +348,8 @@ async function procesarCalculo() {
         return;
     }
 
-    showToast("Calculando la mejor ruta...", "success");
+    // Comentamos o eliminamos el toast viejo para que no salgan dos a la vez
+    // showToast("Calculando la mejor ruta...", "success");
     calcularRutaDirecta(coordenadasViaje);
 }
 
@@ -504,6 +507,7 @@ function obtenerUbicacionActual() {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
             inputOrigen.setAttribute('data-coord', `${lat},${lon}`);
+            coordOrigen = { lat: lat, lng: lon }; 
             map.flyTo({ center: [lon, lat], zoom: 16, essential: true });
 
             const elStart = document.createElement('div');
@@ -547,254 +551,40 @@ function obtenerUbicacionActual() {
 
 function calcularDistanciaKm(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; }
 function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function () { document.getElementById('input-destino').value = datos.direccion; document.getElementById('input-destino').setAttribute('data-coord', `${datos.lat},${datos.lng}`); } } }
-function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHours(); let esNoche = (hora >= 21 || hora < 7); let tarifaActual = esNoche ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia; let bajada = tarifaActual.bajada; let ficha = tarifaActual.ficha; let textoTarifa = esNoche ? "🌜 Noche" : "🌞 Día"; document.getElementById('badge-tarifa').innerText = textoTarifa; let km = distanciaCalculada; let calculoBruto = bajada + (km * ficha); let resultadoFinal = calculoBruto - (calculoBruto * 0.10); document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km'; }
-// --- BUSCADOR HÍBRIDO OPTIMIZADO CON MAPBOX GEOCODING ---
-async function buscarSugerenciasHibridas(query) {
-    const lista = document.getElementById('lista-compartida');
-    lista.innerHTML = '';
-    const nombresVistos = new Set();
-    const coordenadasVistas = new Set();
-
-    const queryLower = query.toLowerCase().trim();
-    let busquedaParaApi = query;
-    const tieneNumero = /\d/.test(query);
-
-    if (!tieneNumero) {
-        if (queryLower.includes("peron oeste") || queryLower.includes("perón oeste")) {
-            busquedaParaApi = busquedaParaApi.replace(/peron oeste|perón oeste/i, "Avenida Presidente Perón Oeste");
-        }
-        else if (queryLower.includes("peron este") || queryLower.includes("perón este")) {
-            busquedaParaApi = busquedaParaApi.replace(/peron este|perón este/i, "Avenida Presidente Perón Este");
-        }
-    }
-
-    const resultadosLocales = LUGARES_VIP.filter(lugar =>
-        lugar.nombre.toLowerCase().includes(queryLower) ||
-        lugar.alias.some(alias => alias.includes(queryLower))
-    );
-
-    resultadosLocales.forEach(lugar => {
-        nombresVistos.add(lugar.nombre.toLowerCase());
-        const keyCoord = lugar.lat.toFixed(3) + "," + lugar.lon.toFixed(3);
-        coordenadasVistas.add(keyCoord);
-        const li = document.createElement('li');
-        li.style.background = "rgba(40,40,40,0.8)";
-        li.innerHTML = `<div class="result-icon" style="color: gold;"><i class="fas fa-star"></i></div><div class="result-text"><span class="result-title">${lugar.nombre}</span><span class="result-sub">${lugar.direccion}</span></div>`;
-        li.onclick = () => { usarCoordenadaDirecta(lugar.nombre, lugar.lat, lugar.lon); };
-        lista.appendChild(li);
-    });
-
-    const urlMapbox = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(busquedaParaApi)}.json?bbox=${RIO_BBOX}&proximity=${RIO_CUARTO_LON},${RIO_CUARTO_LAT}&types=address,poi,neighborhood&language=es&access_token=${MAPBOX_TOKEN}`;
-
-    try {
-        const response = await fetch(urlMapbox);
-        const data = await response.json();
-
-        if (data.features && data.features.length > 0) {
-            data.features.forEach(feature => {
-                let titulo = feature.text;
-                if (feature.address) titulo += ' ' + feature.address;
-
-                let ciudad = "Río Cuarto";
-                if (feature.context) {
-                    const ctxPlace = feature.context.find(c => c.id.startsWith('place'));
-                    if (ctxPlace) ciudad = ctxPlace.text;
-                }
-
-                const subtitulo = ciudad;
-                const lng = feature.geometry.coordinates[0];
-                const lat = feature.geometry.coordinates[1];
-
-                const keyCoord = lat.toFixed(4) + "," + lng.toFixed(4);
-                const huellaDigital = titulo.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-                if (coordenadasVistas.has(keyCoord) || nombresVistos.has(huellaDigital)) return;
-
-                coordenadasVistas.add(keyCoord);
-                nombresVistos.add(huellaDigital);
-
-                const li = document.createElement('li');
-                let iconoClass = feature.place_type.includes('poi') ? 'fa-store' : 'fa-map-marker-alt';
-
-                li.innerHTML = `<div class="result-icon"><i class="fas ${iconoClass}"></i></div><div class="result-text"><span class="result-title">${titulo}</span><span class="result-sub">${subtitulo}</span></div>`;
-                li.onclick = () => { usarCoordenadaDirecta(`${titulo}, ${subtitulo}`, lat, lng); };
-                lista.appendChild(li);
-            });
-            if (lista.children.length > 0) lista.style.display = 'block';
-        }
-    } catch (e) { console.error("Error Mapbox Geocoding:", e); }
-}
-
-function inicializarInputs() {
-    const inputOrigen = document.getElementById('input-origen');
-    const inputDestino = document.getElementById('input-destino');
-    const listaCompartida = document.getElementById('lista-compartida');
-    inputOrigen.addEventListener('focus', () => { activeInputId = 'input-origen'; listaCompartida.style.display = 'none'; });
-    inputDestino.addEventListener('focus', () => { activeInputId = 'input-destino'; listaCompartida.style.display = 'none'; });
-    configurarInput(inputOrigen);
-    configurarInput(inputDestino);
-}
-
-function configurarInput(inputElement) {
-    let timeout = null;
-    inputElement.addEventListener('input', function () {
-        const query = this.value;
-        const lista = document.getElementById('lista-compartida');
-        this.removeAttribute('data-coord'); // Force precise geocoding match if user modifies text
-
-        // Insertar siempre inmediatamente después del contenedor de inputs de la ruta, NO adentro del label
-        const container = document.querySelector('.input-route-container');
-        if(container && container.parentNode) {
-            container.parentNode.insertBefore(lista, container.nextSibling);
-        }
-
-        if (query.length < 2) { lista.style.display = 'none'; return; }
-        clearTimeout(timeout);
-        mostrarSkeleton(lista);
-        timeout = setTimeout(() => { buscarSugerenciasHibridas(query); }, 300);
-    });
-}
-
-function agregarParadaMid() {
-    const container = document.getElementById('route-inputs-container');
-    const waypointsCount = container.querySelectorAll('.waypoint-group').length;
-    if (waypointsCount >= 4) {
-        showToast("Solo se permiten hasta 3 paradas intermedias", "normal");
-        return;
-    }
-
-    const newId = 'input-parada-' + Date.now();
-    const div = document.createElement('div');
-    div.className = 'input-group-premium waypoint-group';
-    div.style.marginTop = '10px';
-    div.innerHTML = `
-        <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-            <input type="text" id="${newId}" class="input-uber" placeholder="Parada intermedia..." autocomplete="off" style="flex-grow:1;">
-            <button class="btn-remove-parada" onclick="removerParada('${newId}')" title="Quitar" style="background: transparent; color: #ff4444; border: none; cursor: pointer; padding: 10px; font-size: 1.2rem;">
-                <i class="fas fa-times-circle"></i>
-            </button>
-        </div>
-    `;
+function calcularPrecio() {
+    const ahora = new Date();
+    const hora = ahora.getHours();
+    let esNoche = (hora >= 21 || hora < 7);
+    let tarifaActual = esNoche ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia;
     
-    // Insert Before the final Destination input
-    const destinoGroup = container.lastElementChild;
-    container.insertBefore(div, destinoGroup);
-
-    const newInput = document.getElementById(newId);
-    newInput.addEventListener('focus', () => { 
-        activeInputId = newId; 
-        document.getElementById('lista-compartida').style.display = 'none'; 
-    });
-    configurarInput(newInput);
+    let bajada = tarifaActual.bajada;
+    let ficha = tarifaActual.ficha;
+    let textoTarifa = esNoche ? "🌜 Noche" : "🌞 Día";
+    document.getElementById('badge-tarifa').innerText = textoTarifa;
     
-    // Animate timeline appearance
-    const timeline = document.querySelector('.route-timeline');
-    const lineConnector = timeline.querySelector('.line-connector');
-    const newDot = document.createElement('div');
-    newDot.className = 'timeline-dot-mid';
-    newDot.style.width = '6px';
-    newDot.style.height = '6px';
-    newDot.style.backgroundColor = '#888';
-    newDot.style.borderRadius = '50%';
-    newDot.style.margin = '4px auto';
-    timeline.insertBefore(newDot, lineConnector);
-
-    verificarEstadoSwap();
-}
-
-function removerParada(id) {
-    const input = document.getElementById(id);
-    if(input && input.closest('.waypoint-group')) {
-        input.closest('.waypoint-group').remove();
-    }
-    const timeline = document.querySelector('.route-timeline');
-    const midDots = timeline.querySelectorAll('.timeline-dot-mid');
-    if (midDots.length > 0) {
-        midDots[0].remove(); // Eliminar solo un puntito gris
-    }
-    verificarEstadoSwap();
-}
-
-function verificarEstadoSwap() {
-    const count = document.querySelectorAll('.waypoint-group').length;
-    if (count > 1) { // includes Destino + N intermediate
-        document.getElementById('swap-container').style.display = 'none';
-    } else {
-        document.getElementById('swap-container').style.display = 'flex';
+    let km = distanciaCalculada;
+    let calculoBruto = bajada + ((km * 1.1) * ficha);
+    let resultadoFinal = calculoBruto - (calculoBruto * 0.10);
+    
+    document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+    document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+    document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km';
+    
+    const comparacionElement = document.getElementById('comparacion-diurna');
+    if (comparacionElement) {
+        if (esNoche) {
+            let bajadaDia = TARIFAS_TAXI.dia.bajada;
+            let fichaDia = TARIFAS_TAXI.dia.ficha;
+            let brutoDia = bajadaDia + ((km * 1.1) * fichaDia);
+            let finalDia = brutoDia - (brutoDia * 0.10);
+            document.getElementById('precio-dia').innerText = finalDia.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+            comparacionElement.style.display = 'block';
+        } else {
+            comparacionElement.style.display = 'none';
+        }
     }
 }
-
-function mostrarSkeleton(lista) {
-    lista.style.display = 'block';
-    lista.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
-        const li = document.createElement('li');
-        li.style.pointerEvents = 'none';
-        li.innerHTML = `<div class="skeleton-icon"></div><div class="skeleton-text-group"><div class="skeleton-line-long"></div><div class="skeleton-line-short"></div></div>`;
-        lista.appendChild(li);
-    }
-}
-
-function usarCoordenadaDirecta(nombre, lat, lon) {
-    const inputActivo = document.getElementById(activeInputId);
-    inputActivo.value = nombre;
-    document.getElementById('lista-compartida').style.display = 'none';
-    const latlng = { lat: lat, lng: lon }; 
-    if (activeInputId === 'input-origen') { coordOrigen = latlng; } else { coordDestino = latlng; const datosAGuardar = { direccion: nombre, lat: lat, lng: lon }; localStorage.setItem('ultimoDestinoTaxi', JSON.stringify(datosAGuardar)); cargarHistorial(); }
-}
-
-function obtenerUbicacionActual() {
-    const inputOrigen = document.getElementById('input-origen');
-    if ("geolocation" in navigator) {
-        inputOrigen.classList.add('input-loading');
-        const opcionesGPS = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-        const onExito = async function (position) {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            coordOrigen = { lat: lat, lng: lon }; 
-            map.flyTo({ center: [lon, lat], zoom: 16, essential: true });
-
-            const elStart = document.createElement('div');
-            elStart.className = 'uber-origen-container';
-            elStart.innerHTML = '<div class="uber-origen-pulse"></div><div class="uber-origen"></div>';
-
-            if (gpsMarker) gpsMarker.remove();
-            gpsMarker = new mapboxgl.Marker(elStart).setLngLat([lon, lat]).addTo(map);
-            try {
-                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?types=address,poi&language=es&access_token=${MAPBOX_TOKEN}`;
-                const resp = await fetch(url);
-                const data = await resp.json();
-                if (data.features && data.features.length > 0) {
-                    let feature = data.features[0];
-                    let direccion = feature.text;
-                    if (feature.address) direccion += ' ' + feature.address;
-
-                    let ciudad = "Río Cuarto";
-                    if (feature.context) {
-                        const ctxPlace = feature.context.find(c => c.id.startsWith('place'));
-                        if (ctxPlace) ciudad = ctxPlace.text;
-                    }
-
-                    const distSC = calcularDistanciaKm(SC_LAT, SC_LON, lat, lon);
-                    if (distSC < 5 && (ciudad === "Las Vertientes" || ciudad === "Holmberg")) ciudad = "Santa Catalina";
-                    if (ciudad) direccion += `, ${ciudad}`;
-                    inputOrigen.value = direccion;
-                } else { inputOrigen.value = "Ubicación detectada"; }
-            } catch (e) { inputOrigen.value = "Mi Ubicación Actual"; }
-            finally { inputOrigen.classList.remove('input-loading'); }
-        };
-        navigator.geolocation.getCurrentPosition(onExito, function (error) {
-            navigator.geolocation.getCurrentPosition(onExito, (err) => {
-                inputOrigen.classList.remove('input-loading');
-                inputOrigen.placeholder = "Escribe tu dirección...";
-            }, { enableHighAccuracy: false, timeout: 15000 });
-        }, opcionesGPS);
-    }
-}
-
-function calcularDistanciaKm(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; }
-function cargarHistorial() { const guardado = localStorage.getItem('ultimoDestinoTaxi'); if (guardado) { const datos = JSON.parse(guardado); const container = document.getElementById('historial-container'); const link = document.getElementById('historial-valor'); let nombreCorto = datos.direccion.length > 30 ? datos.direccion.substring(0, 28) + '...' : datos.direccion; link.innerText = nombreCorto; container.style.display = 'block'; link.onclick = function () { document.getElementById('input-destino').value = datos.direccion; coordDestino = { lat: datos.lat, lng: datos.lng }; } } }
-function calcularPrecio() { const ahora = new Date(); const hora = ahora.getHours(); let esNoche = (hora >= 21 || hora < 7); let tarifaActual = esNoche ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia; let bajada = tarifaActual.bajada; let ficha = tarifaActual.ficha; let textoTarifa = esNoche ? "🚕 Noche" : "☀️ Día"; document.getElementById('badge-tarifa').innerText = textoTarifa; let km = distanciaCalculada; let calculoBruto = bajada + (km * ficha); let resultadoFinal = calculoBruto - (calculoBruto * 0.10); document.getElementById('precio-original').innerText = calculoBruto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('precio-final').innerText = resultadoFinal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); document.getElementById('distancia-final').innerText = km.toFixed(2) + ' km'; }
+// Códigos duplicados eliminados
 
 function volverAlFormulario() {
     document.getElementById('panel-resultados').classList.remove('visible');
