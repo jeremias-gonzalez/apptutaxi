@@ -1,65 +1,259 @@
 [
     {
-        "nombre": "Sociedad Rural Río Cuarto",
+        "nombre": "Sociedad Rural de Río Cuarto",
         "direccion": "Av. Amadeo Sabattini 3801",
-        "lat": -33.1405,
-        "lon": -64.3120,
+        "lat": -33.15946,
+        "lon": -64.35721,
         "alias": [
             "rural",
             "feria",
             "expo",
-            "campo"
+            "predio"
         ]
     },
     {
         "nombre": "Terminal de Ómnibus",
-        "direccion": "Andres Dadone 850",
-        "lat": -33.1142,
-        "lon": -64.3516,
+        "direccion": "Andrés Dadone 850",
+        "lat": -33.11382,
+        "lon": -64.35177,
         "alias": [
             "terminal",
-            "micro",
-            "colectivo",
+            "colectivos",
             "bus"
         ]
     },
     {
-        "nombre": "Centro Cívico",
-        "direccion": "Bv. Arturo Illia 1256",
-        "lat": -33.1165,
-        "lon": -64.3520,
+        "nombre": "Nuevo Hospital San Antonio de Padua (Principal)",
+        "direccion": "Guardias Nacionales 1027",
+        "lat": -33.10929,
+        "lon": -64.35552,
         "alias": [
-            "civico",
-            "gobierno",
-            "rentas"
+            "hospital",
+            "padua",
+            "hospital nuevo"
         ]
     },
     {
-        "nombre": "Hospital San Antonio de Padua",
-        "direccion": "Guardias Nacionales 1027",
-        "lat": -33.1125,
-        "lon": -64.3575,
+        "nombre": "Hospital San Antonio de Padua (Guardia)",
+        "direccion": "Rosario de Santa Fe s/n",
+        "lat": -33.10851,
+        "lon": -64.35612,
         "alias": [
-            "hospital",
-            "medico",
-            "guardia",
-            "padua",
-            "clinica",
-            "sanatorio",
-            "salud"
+            "guardia hospital"
         ]
     },
     {
         "nombre": "Universidad Nacional de Río Cuarto (UNRC)",
         "direccion": "Ruta Nacional 36 km 601",
-        "lat": -33.1118,
-        "lon": -64.3005,
+        "lat": -33.11006,
+        "lon": -64.30179,
         "alias": [
-            "universidad",
             "unrc",
-            "facultad",
-            "instituto",
-            "campus"
+            "universidad",
+            "campus",
+            "facultad"
+        ]
+    },
+    {
+        "nombre": "ITec - Sede Tejerina Norte (Talleres)",
+        "direccion": "Wenceslao Tejerina (N) 150",
+        "lat": -33.10842,
+        "lon": -64.37365,
+        "alias": [
+            "itec norte",
+            "itec tejerina"
+        ]
+    },
+    {
+        "nombre": "ITec - Sede Centro",
+        "direccion": "Constitución 716",
+        "lat": -33.12328,
+        "lon": -64.34948,
+        "alias": [
+            "itec centro"
+        ]
+    },
+    {
+        "nombre": "Instituto Médico Río Cuarto (Principal)",
+        "direccion": "Hipólito Yrigoyen 1020",
+        "lat": -33.12733,
+        "lon": -64.34763,
+        "alias": [
+            "instituto medico",
+            "clinica salud"
+        ]
+    },
+    {
+        "nombre": "Instituto Médico Río Cuarto (Consultorios)",
+        "direccion": "Santiago del Estero 550",
+        "lat": -33.12684,
+        "lon": -64.34812,
+        "alias": [
+            "consultorios instituto"
+        ]
+    },
+    {
+        "nombre": "Policlínico San Lucas",
+        "direccion": "Mitre 930",
+        "lat": -33.12459,
+        "lon": -64.35307,
+        "alias": [
+            "san lucas",
+            "sanatorio"
+        ]
+    },
+    {
+        "nombre": "Clínica Regional del Sud",
+        "direccion": "Av. Italia 1262",
+        "lat": -33.12908,
+        "lon": -64.35141,
+        "alias": [
+            "regional del sud",
+            "la regional"
+        ]
+    },
+    {
+        "nombre": "Neoclínica",
+        "direccion": "Av. Italia 1454",
+        "lat": -33.13044,
+        "lon": -64.35176,
+        "alias": [
+            "maternidad neo",
+            "neo",
+            "neoclinica"
+        ]
+    },
+    {
+        "nombre": "Maternidad Kowalk",
+        "direccion": "Alberdi 500",
+        "lat": -33.13115,
+        "lon": -64.34185,
+        "alias": [
+            "maternidad",
+            "kowalk"
+        ]
+    },
+    {
+        "nombre": "Roca Rosa",
+        "direccion": "Colectora Oeste RN A005",
+        "lat": -33.12351,
+        "lon": -64.38472,
+        "alias": [
+            "roca rosa",
+            "boliche ruta",
+            "roca"
+        ]
+    },
+    {
+        "nombre": "Complejo Casa de Piedra",
+        "direccion": "Wenceslao Tejerina 170",
+        "lat": -33.11051,
+        "lon": -64.37121,
+        "alias": [
+            "casa de piedra",
+            "boliche"
+        ]
+    },
+    {
+        "nombre": "Elvis Rock and Bar",
+        "direccion": "Alvear 598",
+        "lat": -33.12445,
+        "lon": -64.35315,
+        "alias": [
+            "elvis",
+            "elvis bar"
+        ]
+    },
+    {
+        "nombre": "FACTORY",
+        "direccion": "Sobremonte 46",
+        "lat": -33.11762,
+        "lon": -64.34641,
+        "alias": [
+            "factory",
+            "boliche centro"
+        ]
+    },
+    {
+        "nombre": "Margarita Eventos",
+        "direccion": "Sucre 420",
+        "lat": -33.14068,
+        "lon": -64.34607,
+        "alias": [
+            "margarita",
+            "salon fiesta"
+        ]
+    },
+    {
+        "nombre": "Palmar Del Lago",
+        "direccion": "Guardias Nacionales 2680",
+        "lat": -33.10338,
+        "lon": -64.37878,
+        "alias": [
+            "palmar",
+            "salon lago"
+        ]
+    },
+    {
+        "nombre": "Opus Costanera",
+        "direccion": "Río Grande 689",
+        "lat": -33.11202,
+        "lon": -64.34505,
+        "alias": [
+            "opus",
+            "teatro",
+            "costanera"
+        ]
+    },
+    {
+        "nombre": "Paseo de la Ribera",
+        "direccion": "Av. Amadeo Sabattini 2210",
+        "lat": -33.12211,
+        "lon": -64.33152,
+        "alias": [
+            "shopping",
+            "ribera",
+            "cine"
+        ]
+    },
+    {
+        "nombre": "Parque Sarmiento",
+        "direccion": "Av. Marcelo T. de Alvear 500",
+        "lat": -33.10952,
+        "lon": -64.33982,
+        "alias": [
+            "parque banda norte",
+            "sarmiento"
+        ]
+    },
+    {
+        "nombre": "Centro Cultural El Andino",
+        "direccion": "Bv. Roca y Bv. Almafuerte",
+        "lat": -33.13152,
+        "lon": -64.35502,
+        "alias": [
+            "andino",
+            "estacion"
+        ]
+    },
+    {
+        "nombre": "Plaza Roca",
+        "direccion": "Buenos Aires 50",
+        "lat": -33.12352,
+        "lon": -64.34902,
+        "alias": [
+            "plaza central",
+            "centro"
+        ]
+    },
+    {
+        "nombre": "Centro Cívico",
+        "direccion": "Bv. Arturo Illia 1256",
+        "lat": -33.11652,
+        "lon": -64.35202,
+        "alias": [
+            "civico",
+            "gobierno"
         ]
     }
 ]
