@@ -1,0 +1,26 @@
+REORGANIZACION DE DIRECTORIOS Y ARCHIVOS :
+
+-Necesito que mejores la arquitectura actual de carpetas y archivos.
+-Noto que los htmls son muy largos , se mezcla html , styles y codigo js.
+    -utiliza tailwindcss en todos los htmls y crea un js aparte dejando solo la estructura con los estilos.
+    -Acorta mucho css reemplazandolo por tailwind y en todo el proyecto me gustaria que integres la font Inter. 
+    
+ALGORITMO DE VIAJES:
+
+(viaje solicitado = direccion de inicio solicitada por el usuario)
+
+1-el algoritmo debe consultar al primer chofer libre que este mas cerca de la direccion de inicio solicitada por un usuario.
+2- el algoritmo debe evitar que 2 choferes libres reciban el mismo viaje solicitado por el usuario.
+3-En caso de  cerca de la ubicacion del viaje , el algoritmo se lo debe consultar al chofer mas cercano.
+4-retomando el item 1 , el algoritmo debe priorizar al chofer libre cerca de la ubicacion del viaje antes que al chofer que esta ocupado.
+5-si en la ubicacion del viaje solicitado no hay choferes libres , el sistema se lo debe consultar al chofer ocupado mas cercano al viaje solicitado.
+6-retomando el item 5, el algoritmo debe evaluar las distancias de cada chofer para realizar la consulta , siempre la distancia entre chofer y viaje debe ser la mas cercana posible.
+7-el algoritmo debe consultar el viaje solicitado al chofer ocupado siempre y cuando el mismo este finalizando el viaje, es decir llegando a la ubicacion de destino del viaje a completar.
+
+
+REESTRUCTURACION DE CONDUCTOR.HTML:
+
+-El HTML esta muy largo , me gustaria que lo acortes y lo dejes mas limpio , separando el codigo JS , CSS y Tailwind en archivos distintos , como lo hice con el HTML usuario.html 
+-Necesito que uses Tailwind en todo el HTML de conductor.html
+-La fuente es Inter, usa tailwind para eso y el diseño que tenes de conductor.html esta bien pero con la fuente Inter y Tailwind. 
+-Dejame solo la estructura en el conductor.html.

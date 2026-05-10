@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>TuTaxi — Navegación</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --gold: #FFD700;
+            --green: #22c55e;
+            --red: #ef4444;
+            --bg: #000;
+            --surface: rgba(10,10,10,0.96);
+            --border: rgba(255,255,255,0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        /* ── MAPA FULL SCREEN ── */
+        #map {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── HUD SUPERIOR — instrucción de giro ── */
+        .hud-top {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 52px 16px 16px; /* espacio para status bar iOS */
+            background: linear-gradient(to bottom, rgba(0,0,0,0.85) 60%, transparent);
+            pointer-events: none;
+        }
+        .instruccion-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px 18px;
+            backdrop-filter: blur(20px);
+            pointer-events: all;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .instruccion-icono {
+            width: 52px; height: 52px;
+            background: var(--gold);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            color: #000;
+            flex-shrink: 0;
+            transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+        }
+        .instruccion-icono.recalculating {
+            background: var(--red);
+            animation: pulse-red 1s infinite;
+        }
+        @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        .instruccion-texto {
+            flex: 1;
+            overflow: hidden;
+        }
+        .instruccion-dist {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--gold);
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .instruccion-calle {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── HUD INFERIOR — info del viaje ── */
+        .hud-bottom {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 16px 16px 32px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 60%, transparent);
+        }
+        .trip-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 16px 18px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 -4px 32px rgba(0,0,0,0.4);
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .stat-val {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+        .stat-val.green { color: var(--green); }
+        .stat-val.gold  { color: var(--gold); }
+        .stat-lbl {
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        /* Destino */
+        .destino-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-top: 1px solid var(--border);
+            margin-bottom: 14px;
+        }
+        .destino-icon {
+            width: 32px; height: 32px;
+            background: rgba(255,215,0,0.12);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold);
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+        .destino-texto {
+            flex: 1;
+            overflow: hidden;
+        }
+        .destino-lbl { font-size: 0.7rem; color: rgba(255,255,255,0.4); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .destino-addr { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Botones de acción */
+        .action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .btn-nav {
+            padding: 14px 12px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+        }
+        .btn-nav:active { transform: scale(0.96); }
+        .btn-ext {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border);
+            color: #fff;
+        }
+        .btn-completar-nav {
+            background: var(--green);
+            color: #000;
+            font-weight: 800;
+        }
+        .btn-completar-nav:hover { filter: brightness(1.08); }
+
+        /* ── CONTROLES FLOTANTES ── */
+        .float-controls {
+            position: fixed;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .float-btn {
+            width: 44px; height: 44px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            color: #fff;
+            font-size: 0.95rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+        }
+        .float-btn:active { transform: scale(0.93); }
+        .float-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+
+        /* Marcador conductor */
+        .conductor-arrow {
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .conductor-arrow svg {
+            filter: drop-shadow(0 4px 12px rgba(255,215,0,0.6));
+            transition: transform 0.5s ease;
+        }
+
+        /* Progress bar de ruta */
+        .ruta-progress {
+            position: fixed;
+            top: 0; left: 0;
+            height: 3px;
+            background: var(--gold);
+            z-index: 200;
+            transition: width 1s ease;
+            box-shadow: 0 0 8px rgba(255,215,0,0.6);
+        }
+
+        /* Toast */
+        .nav-toast {
+            position: fixed;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(34,197,94,0.9);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            z-index: 300;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+        }
+        .nav-toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div class="ruta-progress" id="ruta-progress" style="width:0%"></div>
+
+<div id="map"></div>
+
+<!-- HUD superior -->
+<div class="hud-top">
+    <div class="instruccion-card">
+        <div class="instruccion-icono" id="instruccion-icono">↑</div>
+        <div class="instruccion-texto">
+            <div class="instruccion-dist" id="instruccion-dist">—</div>
+            <div class="instruccion-calle" id="instruccion-calle">Calculando ruta...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Controles flotantes -->
+<div class="float-controls">
+    <div class="float-btn active" id="btn-centrar" onclick="centrarEnConductor()" title="Centrar">
+        <i class="fas fa-crosshairs"></i>
+    </div>
+    <div class="float-btn" id="btn-norte" onclick="orientarNorte()" title="Norte">
+        <i class="fas fa-compass"></i>
+    </div>
+</div>
+
+<!-- HUD inferior -->
+<div class="hud-bottom">
+    <div class="trip-card">
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-val green" id="stat-eta">—</div>
+                <div class="stat-lbl">ETA</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="stat-dist-rest">—</div>
+                <div class="stat-lbl">Restante</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val gold" id="stat-velocidad">—</div>
+                <div class="stat-lbl">km/h</div>
+            </div>
+        </div>
+
+        <div class="destino-row">
+            <div class="destino-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="destino-texto">
+                <div class="destino-lbl">Destino</div>
+                <div class="destino-addr" id="destino-addr">Cargando...</div>
+            </div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn-nav btn-ext" onclick="abrirExterno()">
+                <i class="fab fa-google"></i> Maps / Waze
+            </button>
+            <button class="btn-nav btn-completar-nav" onclick="completarDesdeNav()">
+                <i class="fas fa-flag-checkered"></i> Completar
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="nav-toast" id="nav-toast"></div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase/env.js"></script>
+<script>
+    // ─── INIT ─────────────────────────────────────────────────
+    mapboxgl.accessToken = ENV.MAPBOX_TOKEN;
+    const { createClient } = supabase;
+    const db = createClient(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY);
+
+    // Leer parámetros de la URL: ?viaje=ID&destino=LAT,LNG&destino_texto=...
+    const params      = new URLSearchParams(window.location.search);
+    const viajeId     = params.get('viaje');
+    const destinoStr  = params.get('destino');   // "lat,lng"
+    const destinoText = decodeURIComponent(params.get('destino_texto') || 'Destino');
+    const conductorId = params.get('conductor');
+
+    const [destLat, destLng] = destinoStr ? destinoStr.split(',').map(Number) : [null, null];
+
+    document.getElementById('destino-addr').textContent = destinoText;
+
+    // ─── MAPA ─────────────────────────────────────────────────
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/navigation-night-v1', // estilo nocturno de navegación
+        zoom: 16,
+        pitch: 60,       // perspectiva 3D
+        bearing: 0,
+        center: [-64.35, -33.12] // Río Cuarto como default
+    });
+
+    let conductorMarker = null;
+    let posicionActual  = null;
+    let rumboActual     = 0;
+    let rutaTotal       = null;
+    let distanciaTotal  = 0;
+    let siguiendoConductor = true;
+    let velocidad       = 0;
+
+    // ─── MARCADOR CONDUCTOR (flecha direccional) ──────────────
+    function crearMarcadorConductor(lng, lat) {
+        const el = document.createElement('div');
+        el.className = 'conductor-arrow';
+        el.innerHTML = `
+            <svg width="44" height="44" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="20" fill="#FFD700" opacity="0.2"/>
+                <circle cx="22" cy="22" r="14" fill="#FFD700"/>
+                <path d="M22 8 L28 28 L22 24 L16 28 Z" fill="#000"/>
+            </svg>`;
+        conductorMarker = new mapboxgl.Marker({ element: el, anchor: 'center', rotationAlignment: 'map' })
+            .setLngLat([lng, lat])
+            .addTo(map);
+    }
+
+    function actualizarMarcador(lng, lat, rumbo) {
+        if (!conductorMarker) {
+            crearMarcadorConductor(lng, lat);
+        } else {
+            conductorMarker.setLngLat([lng, lat]);
+        }
+        conductorMarker.setRotation(rumbo);
+
+        if (siguiendoConductor) {
+            map.easeTo({
+                center: [lng, lat],
+                bearing: rumbo,
+                pitch: 60,
+                zoom: 17,
+                duration: 1000
+            });
+        }
+    }
+
+    // ─── DIBUJAR RUTA ─────────────────────────────────────────
+    async function dibujarRuta(origenLng, origenLat) {
+        if (!destLat || !destLng) return;
+
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origenLng},${origenLat};${destLng},${destLat}?steps=true&geometries=geojson&language=es&access_token=${ENV.MAPBOX_TOKEN}`;
+
+        try {
+            const res  = await fetch(url);
+            const data = await res.json();
+            const ruta = data.routes?.[0];
+            if (!ruta) return;
+
+            rutaTotal     = ruta;
+            distanciaTotal = ruta.distance;
+
+            // Dibujar línea de ruta
+            if (map.getSource('ruta')) {
+                map.getSource('ruta').setData({ type: 'Feature', geometry: ruta.geometry });
+            } else {
+                map.addSource('ruta', {
+                    type: 'geojson',
+                    data: { type: 'Feature', geometry: ruta.geometry }
+                });
+
+                // Sombra de la ruta
+                map.addLayer({
+                    id: 'ruta-sombra',
+                    type: 'line',
+                    source: 'ruta',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': '#FFD700', 'line-width': 12, 'line-opacity': 0.15 }
+                });
+
+                // Línea principal
+                map.addLayer({
+                    id: 'ruta-linea',
+                    type: 'line',
+                    source: 'ruta',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#FFD700',
+                        'line-width': 5,
+                        'line-opacity': 0.95
+                    }
+                });
+            }
+
+            // Marcador destino
+            const elDest = document.createElement('div');
+            elDest.style.cssText = 'width:36px;height:36px;background:#FFD700;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 4px 16px rgba(255,215,0,0.5)';
+            elDest.textContent = '🏁';
+            new mapboxgl.Marker({ element: elDest, anchor: 'center' })
+                .setLngLat([destLng, destLat])
+                .addTo(map);
+
+            actualizarInstruccion(ruta);
+            actualizarStats(ruta);
+
+        } catch(e) {
+            console.warn('Error calculando ruta:', e);
+        }
+    }
+
+    // ─── INSTRUCCIÓN DE GIRO ──────────────────────────────────
+    const ICONOS_MANIOBRA = {
+        'turn-left':         '↰',
+        'turn-right':        '↱',
+        'turn-slight-left':  '↖',
+        'turn-slight-right': '↗',
+        'turn-sharp-left':   '↺',
+        'turn-sharp-right':  '↻',
+        'uturn':             '⇅',
+        'roundabout':        '⟳',
+        'arrive':            '🏁',
+        'depart':            '↑',
+        'straight':          '↑',
+        'merge':             '⇒',
+        'fork-left':         '↰',
+        'fork-right':        '↱',
+        'default':           '↑',
+    };
+
+    function actualizarInstruccion(ruta) {
+        if (!ruta?.legs?.[0]?.steps?.length) return;
+
+        const paso = ruta.legs[0].steps[0];
+        const maniobra = paso.maneuver?.modifier
+            ? `${paso.maneuver.type}-${paso.maneuver.modifier}`.replace(/ /g, '-')
+            : paso.maneuver?.type || 'default';
+
+        const icono = ICONOS_MANIOBRA[maniobra] || ICONOS_MANIOBRA['default'];
+        const distM = paso.distance;
+        const distTexto = distM < 1000
+            ? Math.round(distM) + ' m'
+            : (distM / 1000).toFixed(1) + ' km';
+
+        document.getElementById('instruccion-icono').textContent = icono;
+        document.getElementById('instruccion-dist').textContent  = distTexto;
+        document.getElementById('instruccion-calle').textContent =
+            paso.maneuver?.instruction || paso.name || 'Continuar';
+    }
+
+    function actualizarStats(ruta) {
+        const distM   = ruta.distance;
+        const durSeg  = ruta.duration;
+        const distKm  = distM / 1000;
+        const durMin  = Math.round(durSeg / 60);
+
+        document.getElementById('stat-eta').textContent       = durMin + ' min';
+        document.getElementById('stat-dist-rest').textContent = distKm < 1
+            ? Math.round(distM) + ' m'
+            : distKm.toFixed(1) + ' km';
+        document.getElementById('stat-velocidad').textContent = Math.round(velocidad) || '—';
+
+        // Progress bar
+        if (distanciaTotal > 0) {
+            const progreso = Math.max(0, Math.min(100, (1 - distM / distanciaTotal) * 100));
+            document.getElementById('ruta-progress').style.width = progreso + '%';
+        }
+    }
+
+    // ─── GPS DEL CONDUCTOR ────────────────────────────────────
+    let posAnterior = null;
+    let ultimoUpdate = 0;
+
+    function iniciarGPS() {
+        if (!navigator.geolocation) { alert('GPS no disponible'); return; }
+
+        navigator.geolocation.watchPosition(async (pos) => {
+            const { latitude: lat, longitude: lng, speed, heading } = pos.coords;
+
+            velocidad = speed ? speed * 3.6 : 0; // m/s → km/h
+            rumboActual = heading || rumboActual;
+            posicionActual = { lat, lng };
+
+            // Actualizar marcador
+            actualizarMarcador(lng, lat, rumboActual);
+
+            // Guardar en Supabase cada 3 segundos
+            const ahora = Date.now();
+            if (conductorId && (ahora - ultimoUpdate) > 3000) {
+                ultimoUpdate = ahora;
+                await db.from('conductores').update({
+                    lat, lng, updated_at: new Date().toISOString()
+                }).eq('id', conductorId);
+            }
+
+            // Recalcular ruta cada 30 segundos o si se desvió mucho
+            const tiempoDesdeRuta = ahora - (window._ultimaRuta || 0);
+            if (!window._ultimaRuta || tiempoDesdeRuta > 30000) {
+                window._ultimaRuta = ahora;
+                await dibujarRuta(lng, lat);
+            }
+
+        }, (err) => {
+            console.warn('GPS:', err.message);
+        }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 });
+    }
+
+    // ─── CONTROLES ────────────────────────────────────────────
+    function centrarEnConductor() {
+        siguiendoConductor = true;
+        document.getElementById('btn-centrar').classList.add('active');
+        if (posicionActual) {
+            map.easeTo({ center: [posicionActual.lng, posicionActual.lat], zoom: 17, pitch: 60, bearing: rumboActual, duration: 800 });
+        }
+    }
+
+    function orientarNorte() {
+        map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
+        document.getElementById('btn-norte').classList.add('active');
+        setTimeout(() => document.getElementById('btn-norte').classList.remove('active'), 800);
+    }
+
+    // Desactivar seguimiento si el usuario toca el mapa
+    map.on('touchstart', () => {
+        siguiendoConductor = false;
+        document.getElementById('btn-centrar').classList.remove('active');
+    });
+
+    // ─── ABRIR GPS EXTERNO ────────────────────────────────────
+    function abrirExterno() {
+        if (!destLat || !destLng) return;
+
+        // Detectar iOS vs Android
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+            // Intentar Waze primero, fallback a Maps
+            window.location.href = `waze://?ll=${destLat},${destLng}&navigate=yes`;
+            setTimeout(() => {
+                window.open(`maps://maps.apple.com/?daddr=${destLat},${destLng}&dirflg=d`, '_blank');
+            }, 1000);
+        } else {
+            // Android: Google Maps
+            window.open(`google.navigation:q=${destLat},${destLng}`, '_blank');
+            setTimeout(() => {
+                window.open(`https://maps.google.com/?daddr=${destLat},${destLng}&dirflg=d`, '_blank');
+            }, 500);
+        }
+    }
+
+    // ─── COMPLETAR VIAJE ─────────────────────────────────────
+    async function completarDesdeNav() {
+        if (!viajeId) { history.back(); return; }
+
+        const { error } = await db.from('viajes').update({
+            estado:        'completado',
+            completado_at: new Date().toISOString()
+        }).eq('id', viajeId);
+
+        mostrarToast('¡Viaje completado! 🎉');
+        setTimeout(() => history.back(), 2000);
+    }
+
+    // ─── TOAST ────────────────────────────────────────────────
+    function mostrarToast(msg) {
+        const el = document.getElementById('nav-toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // ─── INIT ─────────────────────────────────────────────────
+    map.on('load', () => {
+        iniciarGPS();
+        mostrarToast('GPS activado — navegando');
+    });
+</script>
+</body>
+</html>
