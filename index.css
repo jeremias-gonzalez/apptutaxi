@@ -3,13 +3,15 @@
     --color-principal: #FFD700;
     --color-principal-hover: #e6c200;
     --color-fondo: #000000;
-    --color-panel: rgba(20, 20, 20, 0.7);
+    --color-panel: rgba(10, 10, 10, 0.85);
     --color-borde: rgba(255, 255, 255, 0.1);
     --color-texto: #ffffff;
     --color-whatsapp: #25D366;
-    --glass-blur: blur(20px);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --gold: #FFD700;
+    --glass-blur: blur(25px);
+    --glass-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.6);
 }
+
 
 body { margin: 0; padding: 0; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; background: var(--color-fondo); }
 #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; background: #000; }
@@ -222,13 +224,30 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .panel-resultados { 
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); 
-    width: 90%; max-width: 400px; background: var(--color-panel); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-    color: white; z-index: 2000; padding: 25px; border-radius: 20px; border: 1px solid var(--color-borde); 
-    box-shadow: var(--glass-shadow); text-align: center; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); 
-    display: flex; flex-direction: column; gap: 12px;
+    position: absolute; bottom: 0; left: 0; right: 0;
+    width: 100%; max-width: none; background: var(--color-panel); 
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    color: white; z-index: 4000; padding: 20px 20px 40px; 
+    border-radius: 24px 24px 0 0; border: 1px solid var(--color-borde); 
+    box-shadow: var(--glass-shadow); transform: translateY(100%); 
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
 }
-.panel-resultados.visible { transform: translateX(-50%) translateY(0); }
+.panel-resultados.visible { transform: translateY(0); }
+.bg-gold { background-color: var(--gold); }
+.text-gold { color: var(--gold); }
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+    position: relative; overflow: hidden;
+}
+.animate-shimmer::after {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    animation: shimmer 1.5s infinite;
+}
+
 .panel-resultados.minimized { transform: translateX(-50%) translateY(calc(100% - 75px)); }
 .panel-resultados.minimized #panel-resultados-content { max-height: 0; opacity: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
 .panel-resultados.minimized #btn-volver { display: none; }
@@ -422,4 +441,119 @@ h2 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 800; text-align: left; 
     background: var(--color-principal);
     color: black;
     border-color: var(--color-principal);
+}
+
+/* ── BOTÓN SOLICITAR ── */
+.btn-solicitar-taxi {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(34,197,94,0.35);
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+.btn-solicitar-taxi:hover { filter: brightness(1.1); transform: translateY(-2px); }
+.btn-solicitar-taxi:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── PANEL SEGUIMIENTO ── */
+.panel-seguimiento {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #0d0d0d;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px 24px 0 0;
+    padding: 20px 20px 40px;
+    z-index: 4000;
+    box-shadow: 0 -10px 50px rgba(0,0,0,0.8);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.panel-seguimiento.visible { display: block; }
+
+@keyframes slideUpPanel { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.seg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.seg-estado {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+.seg-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.seg-dot.buscando {
+    background: #FFD700;
+    box-shadow: 0 0 8px rgba(255,215,0,0.6);
+    animation: pulseDotSeg 1s infinite;
+}
+.seg-dot.notificado {
+    background: #ff7b00;
+    box-shadow: 0 0 10px rgba(255, 123, 0, 0.7);
+    animation: pulseDotSeg 0.8s infinite;
+}
+.seg-dot.aceptado {
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34,197,94,0.6);
+}
+@keyframes pulseDotSeg { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+
+.seg-cancelar {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #888;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.seg-conductor {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 14px;
+}
+.seg-avatar {
+    font-size: 1.8rem;
+    width: 44px; height: 44px;
+    background: rgba(255,215,0,0.1);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.seg-conductor-datos { flex: 1; }
+.seg-conductor-nombre { font-weight: 700; font-size: 0.95rem; }
+.seg-conductor-sub { font-size: 0.78rem; color: #888; margin-top: 2px; }
+.seg-conductor-eta {
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #22c55e;
+    white-space: nowrap;
+}
+
+/* Marcador de taxi cercano */
+.nearby-taxi-marker {
+    width: 32px; height: 32px;
+    background: #000;
+    border: 2px solid #FFD700;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: all 1s linear; /* Movimiento suave */
 }

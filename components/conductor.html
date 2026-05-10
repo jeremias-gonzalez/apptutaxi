@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>TuTaxi — Conductor</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind V4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="conductor.css">
+    
+    <style type="text/tailwindcss">
+        @theme {
+            --color-gold: #FFD700;
+            --color-gold-dim: rgba(255,215,0,0.1);
+        }
+        .screen { @apply hidden fixed inset-0 flex-col; }
+        .screen.active { @apply flex; }
+    </style>
+</head>
+<body class="bg-[#080808] text-white h-dvh overflow-hidden font-sans">
+
+    <!-- ══ LOGIN ══ -->
+    <div id="screen-login" class="screen active items-center justify-center p-8 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,215,0,0.07)_0%,transparent_60%)]">
+        <div class="text-center mb-10">
+            <p class="text-3xl font-black tracking-tight mb-1">Tu<span class="text-gold">Taxi</span></p>
+            <p class="text-sm text-gray-500">Panel de Conductor</p>
+        </div>
+
+        <div class="w-full max-w-sm bg-[#111] border border-white/10 rounded-2xl p-7 relative overflow-hidden shadow-2xl">
+            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent"></div>
+            
+            <div class="space-y-4">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[0.7rem] font-semibold uppercase tracking-widest text-gray-500">Email</label>
+                    <input id="l-email" type="email" placeholder="tu@email.com" class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-gold/40 transition-colors">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[0.7rem] font-semibold uppercase tracking-widest text-gray-500">Contraseña</label>
+                    <input id="l-pass" type="password" placeholder="••••••••" class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-gold/40 transition-colors">
+                </div>
+                <p id="login-error" class="text-red-400 text-xs text-center hidden"></p>
+                <button onclick="loginConductor()" id="btn-ingresar" class="w-full py-4 bg-gold text-black font-black rounded-xl text-sm uppercase tracking-wide hover:scale-[1.02] active:scale-95 transition-all">
+                    Ingresar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ APP PRINCIPAL ══ -->
+    <div id="screen-app" class="screen">
+        <!-- Header -->
+        <header class="flex items-center justify-between px-5 py-4 bg-[#111] border-b border-white/10 z-10">
+            <span class="text-lg font-black">Tu<span class="text-gold">Taxi</span></span>
+            <div class="flex items-center gap-3">
+                <span id="disp-label" class="text-xs font-bold text-gray-500 uppercase tracking-tighter">Offline</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input id="toggle-disp" type="checkbox" class="sr-only toggle-input" onchange="toggleDisponibilidad()">
+                    <span class="w-11 h-6 bg-white/10 border border-white/10 rounded-full transition-all toggle-slider"></span>
+                </label>
+            </div>
+        </header>
+
+        <!-- Status Bar -->
+        <div class="flex items-center gap-2 px-5 py-2.5 bg-[#161616] border-b border-white/5 text-[10px] text-gray-500 uppercase font-bold tracking-tight">
+            <div id="status-dot" class="w-2 h-2 rounded-full bg-gray-600"></div>
+            <span id="status-text">Desconectado — activá disponibilidad</span>
+        </div>
+
+        <!-- Content -->
+        <main class="flex-1 overflow-y-auto p-5 pb-24">
+            <!-- Viaje activo -->
+            <div id="viaje-activo" class="hidden bg-[#111] border border-green-500/20 rounded-2xl p-5 mb-6 relative overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-green-500 to-transparent"></div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="inline-flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 text-green-500 text-[0.65rem] font-black px-3 py-1 rounded-full uppercase">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 pulse-dot"></span> En curso
+                    </span>
+                    <span id="va-precio" class="text-gold text-2xl font-black tracking-tighter">$0</span>
+                </div>
+                <div class="space-y-3 mb-5">
+                    <div class="flex items-start gap-3">
+                        <div class="w-4 h-4 rounded-full border-2 border-white/20 mt-1 flex-shrink-0"></div>
+                        <p id="va-origen" class="text-sm font-medium text-white/90">—</p>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-map-marker-alt text-gold mt-1"></i>
+                        <p id="va-destino" class="text-sm font-bold text-white">—</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="irANavegacion()" class="py-3 bg-gold/10 border border-gold/20 text-gold rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 transition-transform">
+                        <i class="fas fa-route mr-1.5"></i> Navegar
+                    </button>
+                    <button onclick="completarViaje()" class="py-3 bg-green-500 text-black rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 transition-transform">
+                        <i class="fas fa-flag-checkered mr-1.5"></i> Finalizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Historial -->
+            <p class="text-[0.65rem] font-black uppercase tracking-widest text-gray-600 mb-4 ml-1">Historial de Hoy</p>
+            <div id="historial-hoy" class="space-y-2">
+                <div class="text-center py-12 text-gray-700 bg-white/5 border border-dashed border-white/10 rounded-2xl">
+                    <i class="fas fa-route text-2xl mb-2 opacity-20"></i>
+                    <p class="text-xs font-medium">Sin viajes registrados hoy</p>
+                </div>
+            </div>
+
+            <button onclick="logoutConductor()" class="w-full text-center mt-12 py-3 text-[10px] font-bold text-gray-600 uppercase tracking-widest hover:text-gray-400 transition-colors">
+                Cerrar Sesión
+            </button>
+        </main>
+    </div>
+
+    <!-- ══ NAVEGACIÓN ══ -->
+    <div id="screen-nav" class="screen">
+        <div id="nav-progress" class="nav-progress-bar fixed top-0 left-0 h-1 bg-gold z-50"></div>
+        <div id="nav-map" class="flex-1"></div>
+
+        <!-- Instrucción Top -->
+        <div class="absolute top-0 left-0 right-0 z-40 p-4 pt-10 bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
+            <div class="max-w-md mx-auto bg-black/95 border border-white/10 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-4 pointer-events-auto shadow-2xl">
+                <div id="nav-icono" class="w-14 h-14 bg-gold rounded-xl flex items-center justify-center text-3xl text-black shrink-0">↑</div>
+                <div class="flex-1 min-w-0">
+                    <div id="nav-dist" class="text-gold text-2xl font-black leading-none mb-1">—</div>
+                    <div id="nav-calle" class="text-sm text-white/50 font-bold truncate">Calculando...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controles Mapa -->
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
+            <button onclick="centrarConductor()" id="btn-centrar" class="w-12 h-12 bg-black/90 border border-white/10 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all shadow-xl active-btn">
+                <i class="fas fa-crosshairs"></i>
+            </button>
+            <button onclick="orientarNorte()" id="btn-norte" class="w-12 h-12 bg-black/90 border border-white/10 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all shadow-xl">
+                <i class="fas fa-compass"></i>
+            </button>
+        </div>
+
+        <!-- Sugerencias (Viajes cercanos) -->
+        <div id="nav-sugerencias" class="absolute bottom-[280px] left-4 right-4 z-40 space-y-2 hidden"></div>
+
+        <!-- HUD Bottom -->
+        <div class="absolute bottom-0 left-0 right-0 z-40 p-4 bg-gradient-to-t from-black/95 to-transparent">
+            <div class="max-w-md mx-auto bg-black/95 border border-white/10 rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
+                <div class="grid grid-cols-3 gap-4 mb-5 border-b border-white/5 pb-5">
+                    <div class="text-center">
+                        <p id="nav-eta" class="text-green-500 text-2xl font-black">—</p>
+                        <p class="text-[10px] font-black text-white/30 uppercase tracking-tighter">Llegada</p>
+                    </div>
+                    <div class="text-center">
+                        <p id="nav-dist-rest" class="text-white text-2xl font-black">—</p>
+                        <p class="text-[10px] font-black text-white/30 uppercase tracking-tighter">Faltan</p>
+                    </div>
+                    <div class="text-center">
+                        <p id="nav-vel" class="text-gold text-2xl font-black">—</p>
+                        <p class="text-[10px] font-black text-white/30 uppercase tracking-tighter">km/h</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 mb-6 px-1">
+                    <i class="fas fa-map-pin text-gold"></i>
+                    <p id="nav-destino-addr" class="text-sm font-bold truncate opacity-80">—</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="volverDeNavegacion()" class="py-4 bg-white/5 border border-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-widest">
+                        Cerrar
+                    </button>
+                    <button onclick="completarDesdeNav()" class="py-4 bg-green-500 text-black rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-green-500/20">
+                        Finalizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ALERTA NUEVO VIAJE ══ -->
+    <div id="alerta-viaje" class="hidden fixed inset-0 bg-black/90 z-[500] items-end justify-center backdrop-blur-md">
+        <div class="alerta-card w-full max-w-lg bg-[#111] border border-gold/20 rounded-t-[40px] px-6 pb-10 pt-8 shadow-2xl">
+            <div class="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8"></div>
+
+            <div class="flex justify-center mb-6">
+                <span class="inline-flex items-center gap-2 bg-gold/10 border border-gold/20 text-gold text-[0.7rem] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">
+                    <span class="w-2 h-2 rounded-full bg-gold blink-dot"></span> Viaje Entrante
+                </span>
+            </div>
+
+            <div class="text-center mb-8">
+                <div id="al-precio" class="text-gold text-6xl font-black leading-none mb-2 tracking-tighter">$0</div>
+                <div id="al-dist" class="text-xs text-white/40 font-bold uppercase tracking-widest">0.0 km</div>
+            </div>
+
+            <div class="bg-white/5 border border-white/10 rounded-3xl p-5 mb-8 space-y-4">
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-1">A</div>
+                    <div>
+                        <p class="text-[10px] font-black uppercase text-white/30 tracking-widest">Recogida</p>
+                        <p id="al-origen" class="text-base font-bold text-white/90 leading-tight">—</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 bg-gold/10 rounded-xl flex items-center justify-center text-gold text-xs flex-shrink-0 mt-1">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black uppercase text-white/30 tracking-widest">Destino</p>
+                        <p id="al-destino" class="text-base font-bold text-white leading-tight">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-4 mb-10">
+                <div class="relative w-14 h-14">
+                    <svg class="-rotate-90" width="56" height="56" viewBox="0 0 44 44">
+                        <circle class="timer-track" cx="22" cy="22" r="20"/>
+                        <circle id="timer-prog" class="timer-prog" cx="22" cy="22" r="20"/>
+                    </svg>
+                    <div id="timer-num" class="absolute inset-0 flex items-center justify-center text-gold text-lg font-black">20</div>
+                </div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-white/30">Segundos para aceptar</p>
+            </div>
+
+            <div class="grid grid-cols-[1fr_2.5fr] gap-3">
+                <button onclick="rechazarViaje()" class="py-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center justify-center active:scale-95 transition-all">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <button onclick="aceptarViaje()" class="py-5 bg-green-500 text-black rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-lg shadow-green-500/20 active:scale-95 transition-all">
+                    <i class="fas fa-check text-lg"></i> Aceptar Viaje
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="nav-toast" class="fixed top-32 left-1/2 -translate-x-1/2 bg-green-500 text-black px-6 py-3 rounded-full font-black text-xs z-[600] opacity-0 pointer-events-none transition-all duration-300 uppercase tracking-widest shadow-2xl"></div>
+
+    <!-- Libs -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase/env.js"></script>
+    <script src="conductor.js"></script>
+</body>
+</html>
