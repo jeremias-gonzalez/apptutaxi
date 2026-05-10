@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "description": "App TuTaxi",
   "scripts": {
-    "build": "node build.js"
+    "build": "node supabase/build.js"
   }
 }

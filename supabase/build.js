@@ -17,7 +17,7 @@ const content = `const ENV = {
 };\n`;
 
 try {
-    fs.writeFileSync('env.js', content, 'utf8');
+    fs.writeFileSync('supabase/env.js', content, 'utf8');
     console.log('✅ env.js generado correctamente.');
 } catch (error) {
     console.error('❌ Error guardando env.js:', error);
