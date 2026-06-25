@@ -1,0 +1,80 @@
+/* TuTaxi — conductor.css */
+        body { font-family:"Inter",sans-serif; }
+        .screen { display:none; flex-direction:column; }
+        .screen.active { display:flex; }
+        #screen-nav { position:fixed; inset:0; }
+        #nav-map { position:absolute; inset:0; }
+        .nav-progress-bar { position:absolute; top:0; left:0; height:4px; background:#FFD700; z-index:50; }
+        .toggle-slider { display:block; position:relative; width:56px; height:30px; background:#1f2937; border:2px solid #374151; border-radius:30px; cursor:pointer; transition:all 0.3s; }
+        .toggle-slider::before { content:""; position:absolute; width:22px; height:22px; left:2px; top:2px; background:#6b7280; border-radius:50%; transition:all 0.3s; }
+        .toggle-input:checked ~ .toggle-slider { background:rgba(34,197,94,0.2); border-color:#22c55e; }
+        .toggle-input:checked ~ .toggle-slider::before { transform:translateX(26px); background:#22c55e; }
+        .timer-track { fill:none; stroke:#1f2937; stroke-width:5; }
+        .timer-prog  { fill:none; stroke:#FFD700; stroke-width:5; stroke-linecap:round; stroke-dasharray:163; stroke-dashoffset:0; transition:stroke-dashoffset 1s linear; }
+        .active-btn { background:#FFD700!important; color:#000!important; border-color:#FFD700!important; }
+        .historial-item   { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#111; border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:14px 16px; }
+        .hi-route         { flex:1; min-width:0; }
+        .hi-hora-estado   { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+        .hi-hora          { font-size:0.65rem; color:#6b7280; font-weight:700; }
+        .hi-badge         { font-size:0.6rem; padding:1px 8px; border-radius:999px; font-weight:800; }
+        .hi-badge--ok     { background:rgba(34,197,94,0.1); color:#22c55e; border:1px solid rgba(34,197,94,0.2); }
+        .hi-badge--cancel { background:rgba(239,68,68,0.1);  color:#ef4444; border:1px solid rgba(239,68,68,0.2); }
+        .hi-badge--curso  { background:rgba(255,215,0,0.1);  color:#FFD700; border:1px solid rgba(255,215,0,0.2); }
+        .hi-addr  { font-size:0.85rem; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .hi-sub   { font-size:0.72rem; color:#6b7280; margin-top:2px; }
+        .hi-price { font-size:1rem; font-weight:800; color:#FFD700; white-space:nowrap; }
+        .sug-card { background:rgba(10,10,10,0.96); border:1px solid rgba(255,215,0,0.25); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+        .sug-label { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#6b7280; margin-bottom:6px; }
+        .sug-origen { font-size:0.85rem; font-weight:600; }
+        .sug-sub { font-size:0.72rem; color:#6b7280; }
+        .sug-precio { font-size:0.95rem; font-weight:800; color:#FFD700; white-space:nowrap; }
+        .show { display:flex!important; flex-direction:column; }
+        #nav-toast { opacity:0; transition:opacity 0.3s; }
+        #nav-toast.show { opacity:1; }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-track { background:#080808; }
+        ::-webkit-scrollbar-thumb { background:#333; border-radius:10px; }
+/* Animaciones personalizadas */
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes blink   { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes pulseDot{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+@keyframes slideInLeft { from{transform:translateX(-12px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+.alerta-card    { animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1); }
+.sug-card       { animation: slideInLeft 0.3s ease; }
+.blink-dot      { animation: blink 0.8s infinite; }
+.pulse-dot      { animation: pulseDot 2s infinite; }
+
+/* Nav progress bar shadow */
+.nav-progress-bar { 
+    box-shadow: 0 0 8px rgba(255,215,0,0.6); 
+    transition: width 1s ease;
+}
+
+/* Timer SVG styling */
+.timer-track { fill:none; stroke:#1a1a1a; stroke-width:4; }
+.timer-prog  { 
+    fill:none; stroke:#FFD700; stroke-width:4; stroke-linecap:round; 
+    stroke-dasharray:126; stroke-dashoffset:0; 
+    transition: stroke-dashoffset 1s linear; 
+}
+
+/* Toggle Custom Styling (Tailwind-compatible) */
+.toggle-input:checked ~ .toggle-slider { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.3); }
+.toggle-input:checked ~ .toggle-slider::before { transform: translateX(20px); background: #22c55e; }
+.toggle-slider::before { 
+    content:''; position:absolute; width:18px; height:18px; left:2px; top:2px; 
+    background:#555; border-radius:50%; transition:all 0.3s; 
+}
+
+/* Active buttons state */
+.active-btn { 
+    background:#FFD700 !important; 
+    color:#000 !important; 
+    border-color:#FFD700 !important; 
+}
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #080808; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }

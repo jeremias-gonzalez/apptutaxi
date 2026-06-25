@@ -244,25 +244,25 @@ async function calcularRutaDirecta(coordenadasViaje) {
         console.log('📍 Coordenadas guardadas:', ultimasCoordenadas);
 
         // ─────────────────────────────────────────────────────
-        // ── SUPABASE: guardar viaje cotizado ──────────────────
-        {
-            const ahoraSB = new Date();
-            const esNocheSB = (ahoraSB.getHours() >= 21 || ahoraSB.getHours() < 7);
-            const tarifaSB = esNocheSB ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia;
-            const brutoPrecioSB = tarifaSB.bajada + ((distanciaCalculada * 1.1) * tarifaSB.ficha);
-            const precioFinalSB = brutoPrecioSB - (brutoPrecioSB * 0.10);
-            guardarViaje({
-                origenTexto:    document.getElementById('input-origen').value || 'Sin especificar',
-                destinoTexto:   document.getElementById('input-destino').value || 'Sin especificar',
-                origenLat:      ultimasCoordenadas.origen.lat,
-                origenLng:      ultimasCoordenadas.origen.lng,
-                destinoLat:     ultimasCoordenadas.destino.lat,
-                destinoLng:     ultimasCoordenadas.destino.lng,
-                distanciaKm:    distanciaCalculada,
-                precioEstimado: precioFinalSB,
-                tarifaTipo:     esNocheSB ? 'noche' : 'dia'
-            });
-        }
+        // // ── SUPABASE: guardar viaje cotizado ──────────────────
+        // {
+        //     const ahoraSB = new Date();
+        //     const esNocheSB = (ahoraSB.getHours() >= 21 || ahoraSB.getHours() < 7);
+        //     const tarifaSB = esNocheSB ? TARIFAS_TAXI.noche : TARIFAS_TAXI.dia;
+        //     const brutoPrecioSB = tarifaSB.bajada + ((distanciaCalculada * 1.1) * tarifaSB.ficha);
+        //     const precioFinalSB = brutoPrecioSB - (brutoPrecioSB * 0.10);
+        //     guardarViaje({
+        //         origenTexto:    document.getElementById('input-origen').value || 'Sin especificar',
+        //         destinoTexto:   document.getElementById('input-destino').value || 'Sin especificar',
+        //         origenLat:      ultimasCoordenadas.origen.lat,
+        //         origenLng:      ultimasCoordenadas.origen.lng,
+        //         destinoLat:     ultimasCoordenadas.destino.lat,
+        //         destinoLng:     ultimasCoordenadas.destino.lng,
+        //         distanciaKm:    distanciaCalculada,
+        //         precioEstimado: precioFinalSB,
+        //         tarifaTipo:     esNocheSB ? 'noche' : 'dia'
+        //     });
+        // }
         // ─────────────────────────────────────────────────────
 
 
@@ -277,6 +277,8 @@ async function calcularRutaDirecta(coordenadasViaje) {
         document.getElementById('destino-text').innerText = document.getElementById('input-destino').value;
         document.getElementById('floating-trip-card').classList.add('visible');
 
+        // Mostrar autos disponibles ahora que se calculó el viaje
+        suscribirConductoresCercanos();
 
         // Hide GPS marker permanently while viewing the route directly
         if (gpsMarker) { gpsMarker.remove(); }
@@ -497,6 +499,12 @@ function configurarInput(inputElement) {
         const query = this.value;
         const lista = document.getElementById('lista-compartida');
 
+        // Limpiar coordenada guardada al escribir manualmente
+        // (fuerza re-geocodeo al presionar calcular)
+        this.removeAttribute('data-coord');
+        if (this.id === 'input-origen') coordOrigen = null;
+        if (this.id === 'input-destino') coordDestino = null;
+
         // Mover la lista dinámicamente debajo del input que se está usando
         this.parentNode.appendChild(lista);
 
@@ -579,17 +587,28 @@ function obtenerUbicacionActual() {
                     const distSC = calcularDistanciaKm(SC_LAT, SC_LON, lat, lon);
                     if (distSC < 5 && (ciudad === "Las Vertientes" || ciudad === "Holmberg")) ciudad = "Santa Catalina";
                     if (ciudad) direccion += `, ${ciudad}`;
+                    
                     inputOrigen.value = direccion;
-                } else { inputOrigen.value = "Ubicación detectada"; }
-            } catch (e) { inputOrigen.value = "Mi Ubicación Actual"; }
+                    // IMPORTANTE: Guardamos las coordenadas exactas del GPS para que no se pierdan
+                    inputOrigen.setAttribute('data-coord', `${lat},${lon}`);
+                } else { 
+                    inputOrigen.value = "Ubicación detectada"; 
+                    inputOrigen.setAttribute('data-coord', `${lat},${lon}`);
+                }
+            } catch (e) { 
+                inputOrigen.value = "Mi Ubicación Actual"; 
+                inputOrigen.setAttribute('data-coord', `${lat},${lon}`);
+            }
             finally { inputOrigen.classList.remove('input-loading'); }
+
         };
         navigator.geolocation.getCurrentPosition(onExito, function (error) {
             navigator.geolocation.getCurrentPosition(onExito, (err) => {
                 inputOrigen.classList.remove('input-loading');
                 inputOrigen.placeholder = "Escribe tu dirección...";
-            }, { enableHighAccuracy: false, timeout: 15000 });
+            }, { enableHighAccuracy: false, timeout: 30000 });
         }, opcionesGPS);
+
     }
 }
 
@@ -626,32 +645,52 @@ function calcularPrecio() {
 function volverAlFormulario() {
     document.getElementById('panel-resultados').classList.remove('visible');
     document.getElementById('panel-resultados').classList.remove('minimized');
-    document.getElementById('btn-solicitar').style.display = 'none';
-    cancelarSeguimiento();
     document.getElementById('floating-trip-card').classList.remove('visible');
     document.getElementById('panel-inputs').classList.remove('hidden');
 
-    // Restore GPS marker unconditionally
-    if (gpsMarker) {
-        gpsMarker.addTo(map);
+    // Restaurar el btn-solicitar a su estado normal (nunca ocultar aqui)
+    const btnSolicitar = document.getElementById('btn-solicitar');
+    if (btnSolicitar) {
+        btnSolicitar.style.display = 'flex';
+        btnSolicitar.disabled = false;
+        btnSolicitar.innerHTML = '<i class="fas fa-taxi"></i> SOLICITAR AHORA';
     }
 
-    // Reset View
+    // Volver al centro del mapa
     map.flyTo({ center: [RIO_CUARTO_LON, RIO_CUARTO_LAT], zoom: 14, pitch: 0, bearing: 0, essential: true });
 
+    // Limpiar ruta del mapa
     if (map.getSource('route')) {
         map.getSource('route').setData({
-            'type': 'Feature',
-            'properties': {},
-            'geometry': {
-                'type': 'LineString',
-                'coordinates': []
-            }
+            'type': 'Feature', 'properties': {},
+            'geometry': { 'type': 'LineString', 'coordinates': [] }
         });
     }
 
+    // Restaurar GPS marker
+    if (gpsMarker) gpsMarker.addTo(map);
+
     if (markerA) { markerA.remove(); markerA = null; }
     if (markerB) { markerB.remove(); markerB = null; }
+    if (window.routeMarkers) { window.routeMarkers.forEach(m => m.remove()); window.routeMarkers = []; }
+    
+    // Ocultar y desuscribir conductores cercanos al volver al formulario
+    desuscribirConductoresCercanos();
+}
+
+function desuscribirConductoresCercanos() {
+    if (!nearbyDriversSubscribed) return;
+    nearbyDriversSubscribed = false;
+    
+    // Remover todos los marcadores del mapa
+    Object.keys(nearbyMarkers).forEach(id => {
+        if (nearbyMarkers[id]) nearbyMarkers[id].remove();
+    });
+    nearbyMarkers = {};
+    nearbyMarkersPos = {};
+    
+    // Desuscribir canal
+    if (db) db.removeChannel(db.channel('nearby-drivers'));
 }
 
 function editarInput(tipo) {
@@ -688,7 +727,7 @@ function pedirPorWhatsapp(tipo) {
     } 
     // Opción Programar Pendiente (Verde)
     else if (tipo === 'pendiente') {
-        // En lugar de enviar directo, abrimos modal interactivo
+        // En lugar de enviar directo, abrimos  interactivo
         document.getElementById('modal-programar').classList.add('visible');
         return; 
     }
@@ -728,13 +767,15 @@ window.addEventListener('load', () => {
     cargarHistorial();
     inicializarInputs();
     
-    // Iniciar visualización de choferes cercanos
-    setTimeout(suscribirConductoresCercanos, 2000);
+    // La visualización de choferes cercanos ahora se inicia al calcular el precio
 });
 
-// ── CONDUCTORES CERCANOS EN TIEMPO REAL ──────────────────────
+let nearbyDriversSubscribed = false;
+let nearbyMarkersPos = {}; // Guarda la última posición de cada auto para el rumbo
+
 function suscribirConductoresCercanos() {
-    if (!db) return;
+    if (!db || nearbyDriversSubscribed) return;
+    nearbyDriversSubscribed = true;
 
     console.log('🚕 Iniciando visualización de taxis cercanos...');
     
@@ -757,28 +798,65 @@ function suscribirConductoresCercanos() {
         .subscribe();
 }
 
+function calcularRumboNearby(lat1, lng1, lat2, lng2) {
+    if (lat1 === lat2 && lng1 === lng2) return null;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const l1 = lat1 * Math.PI / 180;
+    const l2 = lat2 * Math.PI / 180;
+    const y = Math.sin(dLng) * Math.cos(l2);
+    const x = Math.cos(l1) * Math.sin(l2) - Math.sin(l1) * Math.cos(l2) * Math.cos(dLng);
+    const brng = Math.atan2(y, x) * 180 / Math.PI;
+    return (brng + 360) % 360;
+}
+
 function actualizarMarcadorNearby(c) {
     // Si no está disponible o activo, lo borramos del mapa
     if (!c.disponible || !c.activo || !c.lat || !c.lng) {
         if (nearbyMarkers[c.id]) {
             nearbyMarkers[c.id].remove();
             delete nearbyMarkers[c.id];
+            delete nearbyMarkersPos[c.id];
         }
         return;
     }
 
-    // Si ya existe, lo movemos suavemente
+    let rumbo = null;
+    if (nearbyMarkersPos[c.id]) {
+        rumbo = calcularRumboNearby(nearbyMarkersPos[c.id].lat, nearbyMarkersPos[c.id].lng, c.lat, c.lng);
+    }
+    nearbyMarkersPos[c.id] = { lat: c.lat, lng: c.lng };
+
+    // Si ya existe, lo movemos
     if (nearbyMarkers[c.id]) {
         nearbyMarkers[c.id].setLngLat([c.lng, c.lat]);
+        if (rumbo !== null) nearbyMarkers[c.id].setRotation(rumbo);
     } else {
-        // Si es nuevo, creamos el marcador
+        // Si es nuevo, creamos el marcador dinámico (igual al de matching.js)
         const el = document.createElement('div');
-        el.className = 'nearby-taxi-marker';
-        el.innerHTML = '🚖';
+        el.className = 'taxi-marker';
+        el.innerHTML = `
+            <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));">
+                <svg width="24" height="42" viewBox="0 0 24 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="20" height="38" rx="6" fill="#000" fill-opacity="0.2"/>
+                    <rect x="2" y="1" width="20" height="38" rx="6" fill="#FFC107"/>
+                    <rect x="3" y="2" width="18" height="36" rx="5" fill="#FFD54F"/>
+                    <path d="M4 11C4 10 5 9 7 9H17C19 9 20 10 20 11V15H4V11Z" fill="#1C2833"/>
+                    <path d="M4 27H20V31C20 32 19 33 17 33H7C5 33 4 32 4 31V27Z" fill="#1C2833"/>
+                    <rect x="5" y="16" width="14" height="10" rx="2" fill="#F39C12"/>
+                    <rect x="8" y="18" width="8" height="6" rx="1" fill="#FFF"/>
+                    <rect x="3" y="1" width="4" height="2" rx="1" fill="#FFF"/>
+                    <rect x="17" y="1" width="4" height="2" rx="1" fill="#FFF"/>
+                    <rect x="3" y="37" width="4" height="2" rx="1" fill="#E74C3C"/>
+                    <rect x="17" y="37" width="4" height="2" rx="1" fill="#E74C3C"/>
+                </svg>
+            </div>
+        `;
         
-        nearbyMarkers[c.id] = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        nearbyMarkers[c.id] = new mapboxgl.Marker({ element: el, anchor: 'center', rotationAlignment: 'map' })
             .setLngLat([c.lng, c.lat])
             .addTo(map);
+            
+        if (rumbo !== null) nearbyMarkers[c.id].setRotation(rumbo);
     }
 }
 
@@ -786,4 +864,4 @@ function actualizarMarcadorNearby(c) {
 function togglePanelResultados() {
     const panel = document.getElementById('panel-resultados');
     panel.classList.toggle('minimized');
-}
+}

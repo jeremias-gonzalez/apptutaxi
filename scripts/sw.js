@@ -1,69 +1,78 @@
-const CACHE_NAME = 'tutaxi-v3'; // Changed version to bust cache
-const ASSETS = [
-    './',
-    './index.html',
-    './index.css',
-    './script.js',
-    './lugares.json',
-    './tarifas.json',
-    'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-    'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css',
-    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-    'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js'
-];
+const CACHE_NAME = 'tutaxi-v1';
 
 self.addEventListener('install', event => {
-    self.skipWaiting(); // Force the waiting service worker to become the active service worker
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-        .then(cache => cache.addAll(ASSETS))
-    );
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(keys => {
-            return Promise.all(
-                keys.filter(key => key !== CACHE_NAME)
-                .map(key => caches.delete(key))
-            );
-        }).then(() => self.clients.claim()) // claim clients immediately
-    );
+    event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', event => {
-    // Para llamadas a APIs externas críticas, solo Fetch
-    if (event.request.url.includes('geocode.arcgis.com') || 
-        event.request.url.includes('router.project-osrm.org') || 
-        event.request.url.includes('api.mapbox.com')) {
-        event.respondWith(fetch(event.request));
+
+    const url = new URL(event.request.url);
+
+    // IGNORAR EXTENSIONES
+    if (
+        url.protocol !== 'http:' &&
+        url.protocol !== 'https:'
+    ) {
         return;
     }
 
-    // Estrategia Network-First para asegurar que el usuario siempre
-    // tenga la app y script más recientes. Si no hay internet,
-    // cae (fallback) al caché.
-    event.respondWith(
-        fetch(event.request).then(response => {
-            // Actualizar el caché en segundo plano
-            if (response && response.status === 200 && response.type === 'basic') {
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseClone);
-                });
-            }
-            return response;
-        }).catch(() => {
-            // Si la red falla (offline), retorna del caché
-            return caches.match(event.request);
-        })
-    );
-});
+    // APIs externas SIN CACHE
+    if (
+        url.href.includes('geocode.arcgis.com') ||
+        url.href.includes('router.project-osrm.org') ||
+        url.href.includes('api.mapbox.com')
+    ) {
 
-self.addEventListener('message', (event) => {
-    if (event.data === 'SKIP_WAITING') {
-        self.skipWaiting();
+        event.respondWith(fetch(event.request));
+
+        return;
     }
+
+    // NETWORK FIRST
+    event.respondWith(
+
+        fetch(event.request)
+
+            .then(async response => {
+
+                // SOLO CACHEAR RESPUESTAS VÁLIDAS
+                if (
+                    response &&
+                    response.status === 200 &&
+                    (
+                        response.type === 'basic' ||
+                        response.type === 'cors'
+                    )
+                ) {
+
+                    const cache = await caches.open(CACHE_NAME);
+
+                    try {
+
+                        await cache.put(
+                            event.request,
+                            response.clone()
+                        );
+
+                    } catch (err) {
+
+                        console.warn('No se pudo cachear:', err);
+                    }
+                }
+
+                return response;
+            })
+
+            .catch(async () => {
+
+                const cached =
+                    await caches.match(event.request);
+
+                return cached || Response.error();
+            })
+    );
 });

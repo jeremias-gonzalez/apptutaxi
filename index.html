@@ -31,7 +31,8 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'Outfit', 'sans-serif'] }
+                    fontFamily: { sans: ['Inter', 'Outfit', 'sans-serif'] },
+                    colors: { gold: '#FFD700' }
                 }
             }
         }
@@ -115,33 +116,49 @@
         </div>
     </div>
 
-    <!-- Modal de Viaje Completado (Éxito) -->
+    <!-- Modal de Éxito -->
     <div id="modal-exito" class="modal-overlay">
         <div class="modal-content !max-w-[340px] p-8">
-            <div class="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce">
+            <div class="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
                 <i class="fas fa-check"></i>
             </div>
             <h3 class="text-2xl font-black text-white mb-2">¡Llegaste a destino!</h3>
-            <p class="text-gray-400 text-sm mb-8 leading-relaxed">Esperamos que hayas tenido un excelente viaje con TuTaxi. ¡Hasta la próxima!</p>
-            <button class="w-full bg-white text-black font-black py-4 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all" onclick="cerrarModalExito()">
+            <p class="text-gray-400 text-sm mb-8 leading-relaxed">Esperamos que hayas tenido un excelente viaje. ¡Hasta la próxima!</p>
+            <button class="w-full bg-gold text-black font-black py-4 rounded-2xl active:scale-95 transition-all" onclick="resetAppTotal()">
                 NUEVO VIAJE
             </button>
         </div>
     </div>
+
+    <!-- Modal de Confirmar Cancelación -->
+    <div id="modal-confirmar-cancelar" class="modal-overlay">
+        <div class="modal-content !max-w-[320px] p-6">
+            <h3 class="text-xl font-bold text-white mb-4">¿Cancelar viaje?</h3>
+            <p class="text-gray-400 text-sm mb-6">Se detendrá la búsqueda del conductor.</p>
+            <div class="flex gap-3">
+                <button class="flex-1 bg-white/10 text-white py-3 rounded-xl font-bold" onclick="cerrarModalCancelar()">NO</button>
+                <button class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold" onclick="confirmarCancelacionReal()">SÍ, CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
 
 
     <!-- Panel de Resultados (Uber Style Card) -->
     <div id="panel-resultados" class="panel-resultados">
         <div class="h-1.5 w-12 bg-white/20 rounded-full mx-auto mb-4"></div>
         
-        <div id="panel-resultados-content" class="flex flex-col gap-4">
+        <div id="panel-resultados-content" class="hidden flex flex-col gap-4">
             <!-- Selector de Servicio -->
             <div class="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 active:scale-[0.98] transition-all">
                 <div class="w-14 h-14 bg-gold/20 rounded-xl flex items-center justify-center text-3xl">🚖</div>
                 <div class="flex-1">
                     <div class="flex justify-between items-center">
-                        <span class="font-bold text-lg text-white">Taxi Estándar</span>
-                        <span id="precio-final" class="font-black text-2xl text-white tracking-tighter">$0.00</span>
+                        <span class="font-bold text-lg text-white">Taxi</span>
+                        <div class="flex flex-col items-end">
+                            <span id="precio-original" class="text-xs text-gray-600 line-through hidden"></span>
+                            <span id="precio-final" class="font-black text-2xl text-white tracking-tighter">$0.00</span>
+                        </div>
                     </div>
                     <div class="flex justify-between items-center text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">
                         <span id="distancia-final">0.0 km</span>
@@ -160,14 +177,14 @@
                 <button id="btn-volver" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-4 rounded-2xl transition-all" onclick="volverAlFormulario()">
                     VOLVER
                 </button>
-                <button id="btn-solicitar" class="flex-[2] bg-gold text-black font-black py-4 rounded-2xl shadow-[0_8px_30px_rgb(255,215,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2" onclick="solicitarViaje()">
+                <button id="btn-solicitar" class="flex-[2] bg-gold text-black font-black py-4 rounded-2xl shadow-[0_8px_30px_rgb(255,215,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all items-center justify-center gap-2" style="display:flex;" onclick="solicitarViaje()">
                     <i class="fas fa-taxi"></i> SOLICITAR AHORA
                 </button>
             </div>
         </div>
 
         <!-- Skeleton Loader -->
-        <div id="results-skeleton" class="hidden flex flex-col gap-4 animate-pulse">
+        <div id="results-skeleton" class="flex flex-col gap-4 animate-pulse">
             <div class="h-20 bg-white/5 rounded-2xl"></div>
             <div class="h-4 bg-white/5 w-1/2 mx-auto rounded-full"></div>
             <div class="flex gap-3 mt-2">
@@ -190,9 +207,10 @@
                 <div class="seg-dot buscando"></div>
                 <span id="seg-estado-texto" class="text-white font-bold tracking-tight">Buscando conductor cercano...</span>
             </div>
-            <button class="bg-red-500/10 text-red-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/20 active:scale-95 transition-all" onclick="cancelarSeguimiento()">
+            <button class="bg-red-500/10 text-red-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/20 active:scale-95 transition-all" onclick="abrirModalCancelar()">
                 Cancelar
             </button>
+
         </div>
 
         <!-- Info del Conductor (Oculta al inicio) -->
